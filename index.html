@@ -1,0 +1,2083 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Path Recovery in Breadth-First Search (BFS) — Visual Story</title>
+  <style>
+    /* CSS Variables: Semantic & Accessible Palette */
+    :root {
+      --bg-page: #0b0f19;
+      --bg-card: #131c2e;
+      --bg-card-secondary: #1a263e;
+      --bg-hover: #223354;
+      --border-color: #273754;
+      --border-bright: #3b82f6;
+      --text-main: #f1f5f9;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+      
+      /* Required Palette */
+      --color-current: #f59e0b;       /* amber */
+      --color-current-bg: rgba(245, 158, 11, 0.24);
+      --color-queue: #3b82f6;         /* blue */
+      --color-queue-bg: rgba(59, 130, 246, 0.20);
+      --color-explored: #64748b;      /* light gray-blue */
+      --color-parent-arrows: #94a3b8;  /* gray */
+      --color-path: #10b981;          /* green */
+      --color-path-bg: rgba(16, 185, 129, 0.24);
+      --color-goal: #a855f7;          /* purple */
+      --color-goal-bg: rgba(168, 85, 247, 0.28);
+      --color-wall: #1e293b;          /* dark gray */
+      --color-wall-border: #334155;
+      --color-cell-empty: #0f172a;
+      
+      --color-sticky-bg: #fef3c7;
+      --color-sticky-text: #92400e;
+      --color-sticky-border: #fcd34d;
+
+      --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
+      --shadow-md: 0 4px 12px rgba(0,0,0,0.4);
+      --shadow-glow-amber: 0 0 16px rgba(245, 158, 11, 0.5);
+      --shadow-glow-green: 0 0 18px rgba(16, 185, 129, 0.65);
+      --shadow-glow-purple: 0 0 18px rgba(168, 85, 247, 0.65);
+      --shadow-glow-blue: 0 0 14px rgba(59, 130, 246, 0.5);
+
+      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    }
+
+    [data-theme="light"] {
+      --bg-page: #f8fafc;
+      --bg-card: #ffffff;
+      --bg-card-secondary: #f1f5f9;
+      --bg-hover: #e2e8f0;
+      --border-color: #cbd5e1;
+      --border-bright: #2563eb;
+      --text-main: #0f172a;
+      --text-muted: #475569;
+      --text-dim: #94a3b8;
+      
+      --color-wall: #334155;
+      --color-wall-border: #1e293b;
+      --color-cell-empty: #f8fafc;
+      --color-explored: #94a3b8;
+      --color-parent-arrows: #64748b;
+      
+      --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
+      --shadow-md: 0 4px 10px rgba(0,0,0,0.06);
+      --shadow-glow-amber: 0 0 12px rgba(245, 158, 11, 0.35);
+      --shadow-glow-green: 0 0 14px rgba(16, 185, 129, 0.45);
+      --shadow-glow-purple: 0 0 14px rgba(168, 85, 247, 0.4);
+      --shadow-glow-blue: 0 0 12px rgba(59, 130, 246, 0.35);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-size: 14px; /* default base size >= 12px */
+    }
+
+    body {
+      font-family: var(--font-sans);
+      background-color: var(--bg-page);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 8px 14px 16px;
+      overflow-x: hidden;
+    }
+
+    /* Container sized for laptop viewport without vertical maze scrolling */
+    .app-container {
+      width: 100%;
+      max-width: 1140px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    /* Header Bar */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px 14px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .brand-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .brand-icon {
+      width: 30px;
+      height: 30px;
+      background: linear-gradient(135deg, #3b82f6, #10b981);
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 800;
+      font-size: 13px;
+    }
+
+    .brand-text h1 {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .brand-text h1 span.tag {
+      font-size: 12px;
+      font-weight: 600;
+      padding: 1px 7px;
+      border-radius: 10px;
+      background: var(--color-queue-bg);
+      color: var(--color-queue);
+      border: 1px solid var(--border-bright);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .brand-text p {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .btn-icon {
+      background: var(--bg-card-secondary);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 5px 11px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      user-select: none;
+    }
+
+    .btn-icon:hover {
+      background: var(--bg-hover);
+    }
+
+    /* Scene Progress Navigation */
+    .scene-navigator {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 6px 8px;
+      overflow-x: auto;
+      gap: 4px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .scene-dot-btn {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 5px 8px;
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: 6px;
+      color: var(--text-muted);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s ease;
+    }
+
+    .scene-dot-btn .num {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: var(--bg-card-secondary);
+      border: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .scene-dot-btn:hover {
+      background: var(--bg-hover);
+      color: var(--text-main);
+    }
+
+    .scene-dot-btn.active {
+      background: var(--bg-card-secondary);
+      border-color: var(--border-bright);
+      color: var(--text-main);
+    }
+
+    .scene-dot-btn.active .num {
+      background: var(--color-queue);
+      color: white;
+      border-color: var(--color-queue);
+      box-shadow: 0 0 8px rgba(59, 130, 246, 0.5);
+    }
+
+    .scene-dot-btn.completed .num {
+      background: var(--color-path);
+      color: white;
+      border-color: var(--color-path);
+    }
+
+    /* Narration Card */
+    .narration-card {
+      background: linear-gradient(135deg, var(--bg-card), var(--bg-card-secondary));
+      border: 1px solid var(--border-color);
+      border-left: 4px solid var(--color-queue);
+      border-radius: 10px;
+      padding: 8px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      box-shadow: var(--shadow-sm);
+      transition: border-left-color 0.3s ease;
+    }
+
+    .narration-card.scene-4 { border-left-color: var(--color-goal); }
+    .narration-card.scene-5 { border-left-color: var(--color-path); }
+    .narration-card.scene-6 { border-left-color: var(--color-path); }
+    .narration-card.scene-7 { border-left-color: var(--color-current); }
+
+    .narration-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .scene-badge {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--color-queue);
+    }
+
+    .ai-concept-badge {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-main);
+      background: var(--bg-page);
+      border: 1px solid var(--border-color);
+      padding: 1px 7px;
+      border-radius: 5px;
+      font-family: var(--font-mono);
+    }
+
+    .narration-text {
+      font-size: 15px;
+      font-weight: 600;
+      line-height: 1.35;
+      color: var(--text-main);
+    }
+
+    .narration-sub {
+      font-size: 12px;
+      color: var(--text-muted);
+      line-height: 1.3;
+    }
+
+    /* Workspace: 2-Columns */
+    .workspace {
+      display: grid;
+      grid-template-columns: 440px 1fr;
+      gap: 12px;
+      align-items: start;
+    }
+
+    @media (max-width: 960px) {
+      .workspace {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Left Stage */
+    .stage-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      box-shadow: var(--shadow-sm);
+      position: relative;
+    }
+
+    .stage-header {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-bottom: 6px;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .stage-title {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      color: var(--text-muted);
+    }
+
+    .status-pill {
+      font-size: 12px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 10px;
+      background: var(--bg-card-secondary);
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+    }
+
+    /* Maze Grid */
+    .maze-wrapper {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      user-select: none;
+      margin: 2px 0;
+    }
+
+    .col-labels {
+      display: grid;
+      grid-template-columns: repeat(6, 52px);
+      gap: 6px;
+      margin-left: 24px;
+      margin-bottom: 2px;
+    }
+
+    .col-labels span {
+      font-size: 12px;
+      font-family: var(--font-mono);
+      color: var(--text-dim);
+      text-align: center;
+      font-weight: 600;
+    }
+
+    .maze-row-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .row-labels {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .row-labels span {
+      height: 52px;
+      width: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-family: var(--font-mono);
+      color: var(--text-dim);
+      font-weight: 600;
+    }
+
+    .maze-grid {
+      position: relative;
+      display: grid;
+      grid-template-columns: repeat(6, 52px);
+      grid-template-rows: repeat(6, 52px);
+      gap: 6px;
+      background: var(--bg-card-secondary);
+      padding: 8px;
+      border-radius: 12px;
+      border: 2px solid var(--border-color);
+    }
+
+    /* Cells */
+    .cell {
+      position: relative;
+      width: 52px;
+      height: 52px;
+      border-radius: 8px;
+      background-color: var(--color-cell-empty);
+      border: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+      cursor: default;
+    }
+
+    .cell.wall {
+      background-color: var(--color-wall);
+      border-color: var(--color-wall-border);
+      box-shadow: inset 0 2px 4px rgba(0,0,0,0.4);
+    }
+
+    .cell.wall::after {
+      content: "";
+      width: 14px;
+      height: 2px;
+      background: var(--border-color);
+      border-radius: 1px;
+    }
+
+    .cell.start {
+      border: 2px solid var(--color-queue);
+    }
+
+    .cell.goal {
+      border: 2px solid var(--color-goal);
+      background-color: var(--color-goal-bg);
+    }
+
+    .cell-badge {
+      font-weight: 800;
+      font-size: 18px;
+      line-height: 1;
+    }
+
+    .cell.start .cell-badge { color: var(--color-queue); }
+    .cell.goal .cell-badge { color: var(--color-goal); }
+
+    .cell.goal.pulse-goal {
+      animation: pulse-purple 1.4s infinite ease-in-out;
+    }
+
+    @keyframes pulse-purple {
+      0%, 100% {
+        box-shadow: var(--shadow-glow-purple);
+        transform: scale(1);
+      }
+      50% {
+        box-shadow: 0 0 22px rgba(168, 85, 247, 0.85);
+        transform: scale(1.05);
+      }
+    }
+
+    .cell.explored {
+      background-color: var(--bg-card-secondary);
+      border-color: var(--border-color);
+    }
+
+    .cell.in-queue {
+      border: 2px solid var(--color-queue);
+      background-color: var(--color-queue-bg);
+      box-shadow: var(--shadow-glow-blue);
+    }
+
+    .cell.current {
+      border: 2px solid var(--color-current) !important;
+      background-color: var(--color-current-bg) !important;
+      box-shadow: var(--shadow-glow-amber) !important;
+      transform: scale(1.04);
+      z-index: 10;
+    }
+
+    .cell.in-path {
+      border: 2px solid var(--color-path) !important;
+      background-color: var(--color-path-bg) !important;
+      box-shadow: var(--shadow-glow-green) !important;
+    }
+
+    .cell-coord {
+      position: absolute;
+      bottom: 2px;
+      right: 3px;
+      font-size: 12px;
+      font-family: var(--font-mono);
+      color: var(--text-dim);
+      font-weight: 500;
+      pointer-events: none;
+    }
+
+    .layer-number-badge {
+      position: absolute;
+      top: 2px;
+      left: 3px;
+      font-size: 12px;
+      font-family: var(--font-mono);
+      font-weight: 700;
+      color: var(--color-queue);
+      pointer-events: none;
+    }
+
+    /* Sticky Note */
+    .sticky-note {
+      position: absolute;
+      top: -8px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--color-sticky-bg);
+      color: var(--color-sticky-text);
+      border: 1px solid var(--color-sticky-border);
+      border-radius: 4px;
+      padding: 1px 4px;
+      font-size: 12px;
+      font-weight: 700;
+      font-family: var(--font-mono);
+      white-space: nowrap;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.25);
+      z-index: 25;
+      animation: pop-sticky 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      pointer-events: none;
+    }
+
+    @keyframes pop-sticky {
+      from { transform: translateX(-50%) scale(0.5); opacity: 0; }
+      to { transform: translateX(-50%) scale(1); opacity: 1; }
+    }
+
+    /* Explore Mode Clickable */
+    .cell.clickable {
+      cursor: pointer;
+    }
+
+    .cell.clickable:hover {
+      border-color: var(--color-path);
+      box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
+      transform: scale(1.05);
+      z-index: 15;
+    }
+
+    /* SVG Overlay */
+    .overlay-svg {
+      position: absolute;
+      top: 8px;
+      left: 8px;
+      width: calc(100% - 16px);
+      height: calc(100% - 16px);
+      pointer-events: none;
+      z-index: 15;
+    }
+
+    .parent-arrow {
+      stroke: var(--color-parent-arrows);
+      stroke-width: 2.5;
+      stroke-linecap: round;
+      fill: none;
+      transition: stroke 0.3s ease;
+    }
+
+    .parent-arrow.anim-draw {
+      stroke-dasharray: 45;
+      animation: draw-arrow 0.35s ease-out forwards;
+    }
+
+    @keyframes draw-arrow {
+      from { stroke-dashoffset: 45; }
+      to { stroke-dashoffset: 0; }
+    }
+
+    .parent-arrow.highlight-path {
+      stroke: var(--color-path);
+      stroke-width: 3.5;
+      filter: drop-shadow(0 0 4px rgba(16, 185, 129, 0.8));
+    }
+
+    .parent-arrow.rejected-arrow {
+      stroke: #ef4444;
+      stroke-width: 2.5;
+      stroke-dasharray: 4 4;
+    }
+
+    .arrowhead {
+      fill: var(--color-parent-arrows);
+    }
+
+    .arrowhead.highlight-path {
+      fill: var(--color-path);
+    }
+
+    /* Hopping Glowing Marker */
+    .hopping-marker {
+      position: absolute;
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: radial-gradient(circle, #34d399 20%, #10b981 80%);
+      border: 2px solid #ffffff;
+      box-shadow: 0 0 14px rgba(16, 185, 129, 0.9);
+      pointer-events: none;
+      z-index: 30;
+      transform: translate(-50%, -50%);
+      transition: left 0.45s cubic-bezier(0.34, 1.56, 0.64, 1), top 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    /* Walker Avatar */
+    .walker-avatar {
+      position: absolute;
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background: #3b82f6;
+      border: 2px solid #ffffff;
+      box-shadow: 0 0 14px rgba(59, 130, 246, 0.9);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 15px;
+      pointer-events: none;
+      z-index: 32;
+      transform: translate(-50%, -50%);
+      transition: left 0.4s ease, top 0.4s ease;
+    }
+
+    /* Legend Strip */
+    .legend-strip {
+      width: 100%;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 8px 12px;
+      padding: 5px 8px;
+      background: var(--bg-card-secondary);
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 12px;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    .legend-box {
+      width: 12px;
+      height: 12px;
+      border-radius: 3px;
+      border: 1px solid var(--border-color);
+    }
+
+    .legend-box.current { background: var(--color-current); border-color: #d97706; }
+    .legend-box.queue { background: var(--color-queue); border-color: #2563eb; }
+    .legend-box.explored { background: var(--color-explored); border-color: #475569; }
+    .legend-box.path { background: var(--color-path); border-color: #059669; }
+    .legend-box.goal { background: var(--color-goal); border-color: #7c3aed; }
+    .legend-box.wall { background: var(--color-wall); border-color: var(--color-wall-border); }
+
+    /* Path Strip */
+    .path-strip-card {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 8px 10px;
+      background: var(--bg-card-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+    }
+
+    .path-strip-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .path-strip-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+
+    .path-length-pill {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--color-path);
+      background: var(--color-path-bg);
+      border: 1px solid var(--color-path);
+      padding: 1px 7px;
+      border-radius: 10px;
+    }
+
+    .path-chain-container {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      overflow-x: auto;
+      padding: 2px 0;
+      scrollbar-width: thin;
+      perspective: 800px;
+    }
+
+    .path-node {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 7px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 5px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-main);
+      white-space: nowrap;
+      transition: all 0.25s ease;
+    }
+
+    .path-node.highlight {
+      border-color: var(--color-path);
+      background: var(--color-path-bg);
+      color: var(--color-path);
+    }
+
+    .path-node.anim-flip {
+      animation: flip-card 0.4s ease-in-out;
+    }
+
+    @keyframes flip-card {
+      0% { transform: rotateY(0deg); opacity: 1; }
+      50% { transform: rotateY(90deg); opacity: 0.4; }
+      100% { transform: rotateY(0deg); opacity: 1; }
+    }
+
+    .path-sep {
+      color: var(--text-dim);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    /* Right Column */
+    .details-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      box-shadow: var(--shadow-sm);
+      min-height: 420px;
+    }
+
+    /* Frontier / Queue */
+    .queue-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      background: var(--bg-card-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 8px 10px;
+    }
+
+    .queue-panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+
+    .queue-items-container {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      overflow-x: auto;
+      padding: 2px 0;
+      scrollbar-width: thin;
+    }
+
+    .queue-item {
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      padding: 3px 7px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 5px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-main);
+      white-space: nowrap;
+    }
+
+    .queue-item.front {
+      border-color: var(--color-current);
+      background: var(--color-current-bg);
+      color: var(--color-current);
+    }
+
+    .queue-item.in-queue-badge {
+      border-color: var(--color-queue);
+      background: var(--color-queue-bg);
+      color: var(--color-queue);
+    }
+
+    /* Memory Table */
+    .table-section {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      flex: 1;
+    }
+
+    .table-section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .table-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .table-subtitle {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .table-scroll-container {
+      max-height: 200px;
+      overflow-y: auto;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      background: var(--bg-card-secondary);
+      scrollbar-width: thin;
+    }
+
+    .memory-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 12px;
+      font-family: var(--font-mono);
+    }
+
+    .memory-table th {
+      position: sticky;
+      top: 0;
+      background: var(--bg-card);
+      color: var(--text-muted);
+      font-weight: 700;
+      padding: 5px 8px;
+      border-bottom: 1px solid var(--border-color);
+      z-index: 5;
+      font-size: 12px;
+    }
+
+    .memory-table td {
+      padding: 5px 8px;
+      border-bottom: 1px solid var(--border-color);
+      color: var(--text-main);
+      font-size: 12px;
+    }
+
+    .memory-table tr.highlight-new {
+      background-color: var(--color-current-bg);
+      border-left: 3px solid var(--color-current);
+    }
+
+    .memory-table tr.highlight-path {
+      background-color: var(--color-path-bg);
+      border-left: 3px solid var(--color-path);
+      font-weight: 700;
+      color: var(--color-path);
+    }
+
+    /* Scene 7 Explanatory Cards */
+    .why-it-works-container {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 8px;
+      background: var(--bg-card-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+    }
+
+    .why-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 8px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .why-card-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--color-path);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .why-card-desc {
+      font-size: 12px;
+      color: var(--text-muted);
+      line-height: 1.35;
+    }
+
+    .why-card-btn {
+      background: var(--bg-card-secondary);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      align-self: flex-start;
+      margin-top: 2px;
+    }
+
+    .why-card-btn:hover {
+      background: var(--bg-hover);
+      border-color: var(--color-path);
+    }
+
+    /* Scene 8 Explore Mode */
+    .explore-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 10px;
+      background: var(--bg-card-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+    }
+
+    .explore-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+    }
+
+    .explore-chip {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 3px 8px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .explore-chip:hover {
+      border-color: var(--color-path);
+      background: var(--color-path-bg);
+      color: var(--color-path);
+    }
+
+    /* Bottom Control Bar */
+    .control-bar {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 8px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      box-shadow: var(--shadow-sm);
+      flex-wrap: wrap;
+    }
+
+    .transport-buttons {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .btn-ctrl {
+      background: var(--bg-card-secondary);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      user-select: none;
+      transition: all 0.2s ease;
+    }
+
+    .btn-ctrl:hover:not(:disabled) {
+      background: var(--bg-hover);
+      border-color: var(--text-muted);
+    }
+
+    .btn-ctrl:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .btn-ctrl.btn-primary {
+      background: var(--color-queue);
+      color: white;
+      border-color: var(--color-queue);
+    }
+
+    .btn-ctrl.btn-primary:hover:not(:disabled) {
+      background: #2563eb;
+    }
+
+    .scrubber-group {
+      flex: 1;
+      min-width: 180px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .scrubber-slider {
+      flex: 1;
+      height: 6px;
+      -webkit-appearance: none;
+      appearance: none;
+      background: var(--bg-card-secondary);
+      border-radius: 3px;
+      outline: none;
+      border: 1px solid var(--border-color);
+      cursor: pointer;
+    }
+
+    .scrubber-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--color-queue);
+      border: 2px solid white;
+      box-shadow: 0 0 6px rgba(0,0,0,0.3);
+      cursor: pointer;
+    }
+
+    .step-counter {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+
+    .speed-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .speed-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+
+    .speed-select {
+      background: var(--bg-card-secondary);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      outline: none;
+      cursor: pointer;
+    }
+
+    /* Small Screen Optimization */
+    @media (max-width: 768px) {
+      .scene-navigator { padding: 4px; }
+      .scene-dot-btn span.label { display: none; }
+      .control-bar { flex-direction: column; align-items: stretch; }
+      .scrubber-group { order: 3; }
+    }
+  </style>
+</head>
+<body data-theme="dark">
+  <div class="app-container">
+    <!-- Top Header -->
+    <header>
+      <div class="brand-title">
+        <div class="brand-icon">BFS</div>
+        <div class="brand-text">
+          <h1>Path Recovery in BFS <span class="tag">AI Visual Story</span></h1>
+          <p>States • Actions • Frontier • Backpointer Table</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button id="themeToggleBtn" class="btn-icon" title="Toggle Light/Dark Theme">
+          <span id="themeIcon">☀️</span> <span id="themeText">Light</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Scene Progress Dots Navigation -->
+    <nav class="scene-navigator" id="sceneNav">
+      <button class="scene-dot-btn active" data-scene="1"><span class="num">1</span> <span class="label">Problem</span></button>
+      <button class="scene-dot-btn" data-scene="2"><span class="num">2</span> <span class="label">Sticky Notes</span></button>
+      <button class="scene-dot-btn" data-scene="3"><span class="num">3</span> <span class="label">Memory Table</span></button>
+      <button class="scene-dot-btn" data-scene="4"><span class="num">4</span> <span class="label">Goal Found</span></button>
+      <button class="scene-dot-btn" data-scene="5"><span class="num">5</span> <span class="label">Trace Back</span></button>
+      <button class="scene-dot-btn" data-scene="6"><span class="num">6</span> <span class="label">Flip & Walk</span></button>
+      <button class="scene-dot-btn" data-scene="7"><span class="num">7</span> <span class="label">Why It Works</span></button>
+      <button class="scene-dot-btn" data-scene="8"><span class="num">8</span> <span class="label">Explore Mode</span></button>
+    </nav>
+
+    <!-- Narration Card -->
+    <section class="narration-card" id="narrationCard">
+      <div class="narration-header">
+        <span class="scene-badge" id="sceneBadge">Scene 1: The Problem</span>
+        <span class="ai-concept-badge" id="aiConceptBadge">State Space & Search</span>
+      </div>
+      <div class="narration-text" id="narrationText">Finding the exit is easy. Remembering the route is the hard part.</div>
+      <div class="narration-sub" id="narrationSub">BFS explores states, but without backpointers it cannot reconstruct the path!</div>
+    </section>
+
+    <!-- Main Workspace -->
+    <main class="workspace">
+      <!-- Left Column: The 6x6 Maze & Path Strip -->
+      <section class="stage-card">
+        <div class="stage-header">
+          <div class="stage-title">6×6 State Space (Fixed Order: Up, Right, Down, Left)</div>
+          <div class="status-pill" id="gridStatusPill">Start at S (0,0)</div>
+        </div>
+
+        <div class="maze-wrapper">
+          <!-- Col coordinate headers (0 to 5) -->
+          <div class="col-labels">
+            <span>0</span><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span>
+          </div>
+
+          <div class="maze-row-wrapper">
+            <!-- Row coordinate headers (0 to 5) -->
+            <div class="row-labels">
+              <span>0</span><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span>
+            </div>
+
+            <!-- 6x6 Grid of rounded cells -->
+            <div class="maze-grid" id="mazeGrid">
+              <!-- Rendered via JS -->
+              <svg class="overlay-svg" id="overlaySvg">
+                <defs>
+                  <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                    <path d="M 0 1.5 L 8 5 L 0 8.5 z" class="arrowhead" id="arrowheadMarker" />
+                  </marker>
+                  <marker id="arrow-green" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                    <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#10b981" />
+                  </marker>
+                  <marker id="arrow-red" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                    <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#ef4444" />
+                  </marker>
+                </defs>
+                <g id="arrowsGroup"></g>
+              </svg>
+              <!-- Animated Hopping Marker & Walker Avatar -->
+              <div id="hoppingMarker" class="hopping-marker" style="display: none;"></div>
+              <div id="walkerAvatar" class="walker-avatar" style="display: none;">🤖</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Palette Legend -->
+        <div class="legend-strip">
+          <div class="legend-item"><div class="legend-box current"></div> Current</div>
+          <div class="legend-item"><div class="legend-box queue"></div> In Queue</div>
+          <div class="legend-item"><div class="legend-box explored"></div> Explored</div>
+          <div class="legend-item"><div class="legend-box path"></div> Final Path</div>
+          <div class="legend-item"><div class="legend-box goal"></div> Goal G</div>
+          <div class="legend-item"><div class="legend-box wall"></div> Wall</div>
+        </div>
+
+        <!-- Path Strip beneath the maze -->
+        <div class="path-strip-card" id="pathStripCard">
+          <div class="path-strip-header">
+            <span class="path-strip-title" id="pathStripTitle">Recovered Path: None</span>
+            <span class="path-length-pill" id="pathLengthPill" style="display: none;">Path length: 0 moves</span>
+          </div>
+          <div class="path-chain-container" id="pathChainContainer">
+            <span style="font-size: 12px; color: var(--text-dim);">Path builds during Scene 5 (Trace Back)</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Right Column: Queue, Memory Table, Why It Works, Explore Mode -->
+      <section class="details-card">
+        <!-- Frontier / Queue Section -->
+        <div class="queue-panel" id="queuePanel">
+          <div class="queue-panel-header">
+            <span>Frontier (FIFO Queue)</span>
+            <span id="queueSizeBadge" style="font-family: var(--font-mono); font-size: 12px;">0 states</span>
+          </div>
+          <div class="queue-items-container" id="queueItemsContainer">
+            <span style="font-size: 12px; color: var(--text-dim);">Queue activates in Scene 2 & 3</span>
+          </div>
+        </div>
+
+        <!-- Memory Table Section -->
+        <div class="table-section" id="tableSection">
+          <div class="table-section-header">
+            <div>
+              <div class="table-title">Memory Table <span style="font-size: 12px; font-weight: 400; color: var(--color-path);">parent[child]</span></div>
+              <div class="table-subtitle">"Where did each cell come from?"</div>
+            </div>
+            <span id="tableCountBadge" class="status-pill" style="font-family: var(--font-mono); font-size: 12px;">0 records</span>
+          </div>
+          <div class="table-scroll-container">
+            <table class="memory-table">
+              <thead>
+                <tr>
+                  <th>Child State</th>
+                  <th>Action</th>
+                  <th>Came From (Parent)</th>
+                </tr>
+              </thead>
+              <tbody id="memoryTableBody">
+                <!-- Dynamically filled rows -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Scene 7 Specific: Why It Works Explanatory Cards -->
+        <div class="why-it-works-container" id="whyItWorksContainer" style="display: none;">
+          <div class="why-card">
+            <div class="why-card-title">
+              <span>1. First Discovery Wins</span>
+            </div>
+            <div class="why-card-desc">Every cell records a parent pointer only once. Because BFS visits states in order of shortest distance, the first route to reach any cell is guaranteed to be shortest. Any later discovery is ignored!</div>
+            <button class="why-card-btn" onclick="highlightRule1Conflict()">Inspect Cell (3,1) Multi-Route</button>
+          </div>
+          <div class="why-card">
+            <div class="why-card-title">
+              <span>2. BFS Spreads in Layers</span>
+            </div>
+            <div class="why-card-desc">BFS ripples outward layer by layer (Distance 0, 1, 2...). When Goal G is reached at Layer 10, all shorter levels have already been searched. Thus, 10 moves is optimal!</div>
+            <button class="why-card-btn" onclick="toggleRippleLayerNumbers()">Toggle Layer Numbers (0 to 10)</button>
+          </div>
+        </div>
+
+        <!-- Scene 8 Specific: Explore Mode Panel -->
+        <div class="explore-panel" id="explorePanel" style="display: none;">
+          <div style="font-size: 13px; font-weight: 700; color: var(--color-path);">Interactive Playground: Click any cell in the maze!</div>
+          <div style="font-size: 12px; color: var(--text-muted);">Click any explored cell on the left to see the marker hop along its stored backpointers to Start (0,0).</div>
+          <div class="explore-chips">
+            <span class="explore-chip" onclick="handleExploreClick(2, 4)">Try (2,4) Decoy Dead End</span>
+            <span class="explore-chip" onclick="handleExploreClick(3, 0)">Try (3,0) Split Path</span>
+            <span class="explore-chip" onclick="handleExploreClick(4, 3)">Try (4,3) Midpoint</span>
+            <span class="explore-chip" onclick="handleExploreClick(5, 5)">Try (5,5) Goal G</span>
+          </div>
+          <div id="walkExploredBtnContainer" style="margin-top: 4px; display: none;">
+            <button class="why-card-btn" style="background: var(--color-path); color: white; border-color: var(--color-path); padding: 5px 12px;" onclick="walkCurrentExploredPath()">🤖 Walk Recovered Route</button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Bottom Controls & Playback Toolbar -->
+    <footer class="control-bar">
+      <div class="transport-buttons">
+        <button id="resetBtn" class="btn-ctrl" title="Reset to start [R]">⏮ Reset</button>
+        <button id="backBtn" class="btn-ctrl" title="Previous step [←]">◀ Back</button>
+        <button id="playBtn" class="btn-ctrl btn-primary" title="Play/Pause [Space]">▶ Auto-Play</button>
+        <button id="nextBtn" class="btn-ctrl" title="Next step [→]">Next ▶</button>
+        <button id="skipGoalBtn" class="btn-ctrl" title="Jump to Goal Scene">⏭ Skip to Goal</button>
+      </div>
+
+      <div class="scrubber-group">
+        <span class="speed-label">Step</span>
+        <input type="range" id="stepScrubber" class="scrubber-slider" min="0" max="62" value="0">
+        <span class="step-counter" id="stepCounterText">0 / 62</span>
+      </div>
+
+      <div class="speed-group">
+        <span class="speed-label">Speed:</span>
+        <select id="speedSelect" class="speed-select">
+          <option value="1200">0.5x (Slow)</option>
+          <option value="650" selected>1.0x (Normal)</option>
+          <option value="380">1.5x (Fast)</option>
+          <option value="200">2.5x (Ultra)</option>
+        </select>
+      </div>
+    </footer>
+  </div>
+
+  <script>
+    // PRECOMPUTED SNAPSHOT DATA
+    const SNAPSHOTS = [{"sceneId": 1, "sceneName": "Problem", "sceneTitle": "1. The Problem", "narration": "Finding the exit is easy. Remembering the route is the hard part.", "aiConcept": "State Space & The Problem of Blind Search", "explanation": "BFS searches forward through the maze (state space). But if it doesn't leave 'breadcrumbs' pointing backwards, finding Goal G leaves the agent stranded without a route!", "currentCell": null, "queue": [], "explored": [], "parentMap": {}, "activeArrow": null, "recentSticky": null, "rejectedAttempt": null, "pathSoFar": [], "pathFlipped": false, "walkerCell": null, "highlightedTableRow": null, "level": 0}, {"sceneId": 1, "sceneName": "Problem", "sceneTitle": "1. The Problem", "narration": "States are cells (r,c). Actions are Up, Right, Down, Left. Watch how BFS discovers states and remembers where each one came from.", "aiConcept": "States, Actions & Backpointers", "explanation": "To reconstruct the path, every discovered cell must remember exactly one thing: its PARENT cell (where it was discovered from).", "currentCell": [0, 0], "queue": [[0, 0]], "explored": [[0, 0]], "parentMap": {}, "activeArrow": null, "recentSticky": null, "rejectedAttempt": null, "pathSoFar": [], "pathFlipped": false, "walkerCell": null, "highlightedTableRow": null, "level": 0}, {"sceneId": 2, "sceneName": "Sticky Notes", "sceneTitle": "2. Sticky Notes", "narration": "Popped state (0,0) from frontier. Expanding its legal actions (Up, Right, Down, Left)...", "aiConcept": "Frontier Expansion (FIFO Queue)", "explanation": "BFS processes states in first-in, first-out order. State (0,0) is at Level 0.", "currentCell": [0, 0], "queue": [], "explored": [[0, 0]], "parentMap": {}, "activeArrow": null, "recentSticky": null, "rejectedAttempt": null, "pathSoFar": [], "pathFlipped": false, "walkerCell": null, "highlightedTableRow": null, "level": 0}, {"sceneId": 2, "sceneName": "Sticky Notes", "sceneTitle": "2. Sticky Notes", "narration": "Action RIGHT: Discovered (0,1). Arrow points from parent (0,0). 'came from (0,0)' tag recorded.", "aiConcept": "Sticky Note / Backpointer", "explanation": "New cell (0,1) is linked to parent (0,0). Table records: parent[(0,1)] = (0,0).", "currentCell": [0, 0], "queue": [[0, 1]], "explored": [[0, 0], [0, 1]], "parentMap": {"0,1": {"parent": [0, 0], "action": "RIGHT", "arrow": "\u2192"}}, "activeArrow": {"from": [0, 0], "to": [0, 1]}, "recentSticky": {"cell": [0, 1], "from": [0, 0]}, "rejectedAttempt": null, "pathSoFar": [], "pathFlipped": false, "walkerCell": null, "highlightedTableRow": "0,1", "level": 1}, {"sceneId": 2, "sceneName": "Sticky Notes", "sceneTitle": "2. Sticky Notes", "narration": "Action DOWN: Discovered (1,0). Arrow points from parent (0,0). 'came from (0,0)' tag recorded.", "aiConcept": "Sticky Note / Backpointer", "explanation": "New cell (1,0) is linked to parent (0,0). Table records: parent[(1,0)] = (0,0).", "currentCell": [0, 0], "queue": [[0, 1], [1, 0]], "explored": [[0, 0], [0, 1], [1, 0]], "parentMap": {"0,1": {"parent": [0, 0], "action": "RIGHT", "arrow": "\u2192"}, "1,0": {"parent": [0, 0], "action": "DOWN", "arrow": "\u2193"}}, "activeArrow": {"from": [0, 0], "to": [1, 0]}, "recentSticky": {"cell": [1, 0], "from": [0, 0]}, "rejectedAttempt": null, "pathSoFar": [], "pathFlipped": false, "walkerCell": null, "highlightedTableRow": "1,0", "level": 1}, {"sceneId": 2, "sceneName": "Sticky Notes", "sceneTitle": "2. Sticky Notes", "narration": "Popped state (0,1) from frontier. Expanding its legal actions (Up, Right, Down, Left)...", "aiConcept": "Frontier Expansion (FIFO Queue)", "explanation": "BFS processes states in first-in, first-out order. State (0,1) is at Level 1.", "currentCell": [0, 1], "queue": [[1, 0]], "explored": [[0, 0], [0, 1], [1, 0]], "parentMap": {"0,1": {"parent": [0, 0], "action": "RIGHT", "arrow": "\u2192"}, "1,0": {"parent": [0, 0], "action": "DOWN", "arrow": "\u2193"}}, "activeArrow": null, "recentSticky": null, "rejectedAttempt": null, "pathSoFar": [], "pathFlipped": false, "walkerCell": null, "highlightedTableRow": null, "level": 1}, {"sceneId": 3, "sceneName": "Memory Table", "sceneTitle": "3. Memory Table", "narration": "Action RIGHT: Discovered (0,2). Arrow points from parent (0,1). 'came from (0,1)' tag recorded.", "aiConcept": "Sticky Note / Backpointer", "explanation": "New cell (0,2) is linked to parent (0,1). Table records: parent[(0,2)] = (0,1).", "currentCell": [0, 1], "queue": [[1, 0], [0, 2]], "explored": [[0, 0], [0, 1], [1, 0], [0, 2]], "parentMap": {"0,1": {"parent": [0, 0], "action": "RIGHT", "arrow": "\u2192"}, "1,0": {"parent": [0, 0], "action": "DOWN", "arrow": "\u2193"}, "0,2": {"parent": [0, 1], "action": "RIGHT", "arrow": "\u2192"}}, "activeArrow": {"from": [0, 1], "to": [0, 2]}, "recentSticky": {"cell": [0, 2], "from": [0, 1]}, "rejectedAttempt": null, "pathSoFar": [], "pathFlipped": false, "walkerCell": null, "highlightedTableRow": "0,2", "level": 2}, {"sceneId": 3, "sceneName": "Memory Table", "sceneTitle": "3. Memory Table", "narration": "Popped state (1,0) from frontier. Expanding its legal actions (Up, Right, Down, Left)...", "aiConcept": "Frontier Expansion (FIFO Queue)", "explanation": "BFS processes states in first-in, first-out order. State (1,0) is at Level 1.", "currentCell": [1, 0], "queue": [[0, 2]], "explored": [[0, 0], [0, 1], [1, 0], [0, 2]], "parentMap": {"0,1": {"parent": [0, 0], "action": "RIGHT", "arrow": "\u2192"}, "1,0": {"parent": [0, 0], "action": "DOWN", "arrow": "\u2193"}, "0,2": {"parent": [0, 1], "action": "RIGHT", "arrow": "\u2192"}}, "activeArrow": null, "recentSticky": null, "rejectedAttempt": null, "pathSoFar": [], "pathFlipped": false, "walkerCell": null, "highlightedTableRow": null, "level": 1}, {"sceneId": 3, "sceneName": "Memory Table", "sceneTitle": "3. Memory Table", "narration": "Action DOWN: Discovered (2,0). Arrow points from parent (1,0). 'came from (1,0)' tag recorded.", "aiConcept": "Sticky Note / Backpointer", "explanation": "New cell (2,0) is linked to parent (1,0). Table records: parent[(2,0)] = (1,0).", "currentCell": [1, 0], "queue": [[0, 2], [2, 0]], "explored": [[0, 0], [0, 1], [1, 0], [0, 2], [2, 0]], "parentMap": {"0,1": {"parent": [0, 0], "action": "RIGHT", "arrow": "\u2192"}, "1,0": {"parent": [0, 0], "action": "DOWN", "arrow": "\u2193"}, "0,2": {"parent": [0, 1], "action": "RIGHT", "arrow": "\u2192"}, "2,0": {"parent": [1, 0], "action": "DOWN", "arrow": "\u2193"}}, "activeArrow": {"from": [1, 0], "to": [2, 0]}, "recentSticky": {"cell": [2, 0], "from": [1, 0]}, "rejectedAttempt": null, "pathSoFar": [], "pathFlipped": false, "walkerCell": null, "highlightedTableRow": "2,0", "level": 2}, {"sceneId": 3, "sceneName": "Memory Table", "sceneTitle": "3. Memory Table", "narration": "Popped state (0,2) from frontier. Expanding its legal actions (Up, Right, Down, Left)...", "aiConcept": "Frontier Expansion (FIFO Queue)", "explanation": "BFS processes states in first-in, first-out order. State (0,2) is at Level 2.", "currentCell": [0, 2], "queue": [[2, 0]], "explored": [[0, 0], [0, 1], [1, 0], [0, 2], [2, 0]], "parentMap": {"0,1": {"parent": [0, 0], "action": "RIGHT", "arrow": "\u2192"}, "1,0": {"parent": [0, 0], "action": "DOWN", "arrow": "\u2193"}, "0,2": {"parent": [0, 1], "action": "RIGHT", "arrow": "\u2192"}, "2,0": {"parent": [1, 0], "action": "DOWN", "arrow": "\u2193"}}, "activeArrow": null, "recentSticky": null, "rejectedAttempt": null, "pathSoFar": [], "pathFlipped": false, "walkerCell": null, "highlightedTableRow": null, "level": 2}, {"sceneId": 3, "sceneName": "Memory Table", "sceneTitle": "3. Memory Table", "narration": "Action RIGHT: Discovered (0,3). Arrow points from parent (0,2). 'came from (0,2)' tag recorded.", "aiConcept": "Sticky Note / Backpointer", "explanation": "New cell (0,3) is linked to parent (0,2). Table records: parent[(0,3)] = (0,2).", "currentCell": [0, 2], "queue": [[2, 0], [0, 3]], "explored": [[0, 0], [0, 1], [1, 0], [0, 2], [2, 0], [0, 3]], "parentMap": {"0,1": {"parent": [0, 0], "action": "RIGHT", "arrow": "\u2192"}, "1,0": {"parent": [0, 0], "action": "DOWN", "arrow": "\u2193"}, "0,2": {"parent": [0, 1], "action": "RIGHT", "arrow": "\u2192"}, "2,0": {"parent": [1, 0], "action": "DOWN", "arrow": "\u2193"}, "0,3": {"parent": [0, 2], "action": "RIGHT", "arrow": "\u2192"}}, "activeArrow": {"from": [0, 2], "to": [0, 3]}, "recentSticky": {"cell": [0, 3], "from": [0, 2]}, "rejectedAttempt": null, "pathSoFar": [], "pathFlipped": false, "walkerCell": null, "highlightedTableRow": "0,3", "level": 3}, {"sceneId": 3, "sceneName": "Memory Table", "sceneTitle": "3. Memory Table", "narration": "Popped state (2,0) from frontier. Expanding its legal actions (Up, Right, Down, Left)...", "aiConcept": "Frontier Expansion (FIFO Queue)", "explanation": "BFS processes states in first-in, first-out order. State (2,0) is at Level 2.", "currentCell": [2, 0], "queue": [[0, 3]], "explored": [[0, 0], [0, 1], [1, 0], [0, 2], [2, 0], [0, 3]], "parentMap": {"0,1": {"parent": [0, 0], "action": "RIGHT", "arrow": "\u2192"}, "1,0": {"parent": [0, 0], "action": "DOWN", "arrow": "\u2193"}, "0,2": {"parent": [0, 1], "action": "RIGHT", "arrow": "\u2192"}, "2,0": {"parent": [1, 0], "action": "DOWN", "arrow": "\u2193"}, "0,3": {"parent": [0, 2], "action": "RIGHT", "arrow": "\u2192"}}, "activeArrow": null, "recentSticky": null, "rejectedAttempt": null, "pathSoFar": [], "pathFlipped": false, "walkerCell": null, "highlightedTableRow": null, "level": 2}, {"sceneId": 3, "sceneName": "Memory Table", "sceneTitle": "3. Memory Table", "narration": "Action RIGHT: Discovered (2,1). Arrow points from parent (2,0). 'came from (2,0)' tag recorded.", "aiConcept": "Sticky Note / Backpointer", "explanation": "New cell (2,1) is linked to parent (2,0). Table records: parent[(2,1)] = (2,0).", "currentCell": [2, 0], "queue": [[0, 3], [2, 1]], "explored": [[0, 0], [0, 1], [1, 0], [0, 2], [2, 0], [0, 3], [2, 1]], "parentMap": {"0,1": {"parent": [0, 0], "action": "RIGHT", "arrow": "\u2192"}, "1,0": {"parent": [0, 0], "action": "DOWN", "arrow": "\u2193"}, "0,2": {"parent": [0, 1], "action": "RIGHT", "arrow": "\u2192"}, "2,0": {"parent": [1, 0], "action": "DOWN", "arrow": "\u2193"}, "0,3": {"parent": [0, 2], "action": "RIGHT", "arrow": "\u2192"}, "2,1": {"parent": [2, 0], "action": "RIGHT", "arrow": "\u2192"}}, "activeArrow": {"from": [2, 0], "to": [2, 1]}, "recentSticky": {"cell": [2, 1], "from": [2, 0]}, "rejectedAttempt": null, "pathSoFar": [], "pathFlipped": false, "walkerCell": null, "highlightedTableRow": "2,1", "level": 3}, {"sceneId": 3, "sceneName": "Memory Table", "sceneTitle": "3. Memory Table", "narration": "Action DOWN: Discovered (3,0). Arrow points from parent (2,0). 'came from (2,0)' tag recorded.", "aiConcept": "Sticky Note / Backpointer", "explanation": "New cell (3,0) is linked to parent (2,0). Table records: parent[(3,0)] = (2,0).", "currentCell": [2, 0], "queue": [[0, 3], [2, 1], [3, 0]], "explored": [[0, 0], [0, 1], [1, 0], [0, 2], [2, 0], [0, 3], [2, 1], [3, 0]], "parentMap": {"0,1": {"parent": [0, 0], "action": "RIGHT", "arrow": "\u2192"}, "1,0": {"parent": [0, 0], "action": "DOWN", "arrow": "\u2193"}, "0,2": {"parent": [0, 1], "action": "RIGHT", "arrow": "\u2192"}, "2,0": {"parent": [1, 0], "action": "DOWN", "arrow": "\u2193"}, "0,3": {"parent": [0, 2], "action": "RIGHT", "arrow": "\u2192"}, "2,1": {"parent": [2, 0], "action": "RIGHT", "arrow": "\u2192"}, "3,0": {"parent": [2, 0], "action": "DOWN", "arrow": "\u2193"}}, "activeArrow": {"from": [2, 0], "to": [3, 0]}, "recentSticky": {"cell": [3, 0], "from": [2, 0]}, "rejectedAttempt": null, "pathSoFar": [], "pathFlipped": false, "walkerCell": null, "highlightedTableRow": "3,0", "level": 3}, {"sceneId": 3, "sceneName": "Memory Table", "sceneTitle": "3. Memory Table", "narration": "Popped state (0,3) from frontier. Expanding its legal actions (Up, Right, Down, Left)...", "aiConcept": "Frontier Expansion (FIFO Queue)", "explanation": "BFS processes states in first-in, first-out order. State (0,3) is at Level 3.", "currentCell": [0, 3], "queue": [[2, 1], [3, 0]], "explored": [[0, 0], [0, 1], [1, 0], [0, 2], [2, 0], [0, 3], [2, 1], [3, 0]], "parentMap": {"0,1": {"parent": [0, 0], "action": "RIGHT", "arrow": "\u2192"}, "1,0": {"parent": [0, 0], "action": "DOWN", "arrow": "\u2193"}, "0,2": {"parent": [0, 1], "action": "RIGHT", "arrow": "\u2192"}, "2,0": {"parent": [1, 0], "action": "DOWN", "arrow": "\u2193"}, "0,3": {"parent": [0, 2], "action": "RIGHT", "arrow": "\u2192"}, "2,1": {"parent": [2, 0], "action": "RIGHT", "arrow": "\u2192"}, "3,0": {"parent": [2, 0], "action": "DOWN", "arrow": "\u2193"}}, "activeArrow": null, "recentSticky": null, "rejectedAttempt": null, "pathSoFar": [], "pathFlipped": false, "walkerCell": null, "highlightedTableRow": null, "level": 3}, {"sceneId": 3, "sceneName": "Memory Table", "sceneTitle": "3. Memory Table", "narration": "Action RIGHT: Discovered (0,4). Arrow points from parent (0,3). 'came from (0,3)' tag recorded.", "aiConcept": "Sticky Note / Backpointer", "explanation": "New cell (0,4) is linked to parent (0,3). Table records: parent[(0,4)] = (0,3).", "currentCell": [0, 3], "queue": [[2, 1], [3, 0], [0, 4]], "explored": [[0, 0], [0, 1], [1, 0], [0, 2], [2, 0], [0, 3], [2, 1], [3, 0], [0, 4]], "parentMap": {"0,1": {"parent": [0, 0], "action": "RIGHT", "arrow": "\u2192"}, "1,0": {"parent": [0, 0], "action": "DOWN", "arrow": "\u2193"}, "0,2": {"parent": [0, 1], "action": "RIGHT", "arrow": "\u2192"}, "2,0": {"parent": [1, 0], "action": "DOWN", "arrow": "\u2193"}, "0,3": {"parent": [0, 2], "action": "RIGHT", "arrow": "\u2192"}, "2,1": {"parent": [2, 0], "action": "RIGHT", "arrow": "\u2192"}, "3,0": {"parent": [2, 0], "action": "DOWN", "arrow": "\u2193"}, "0,4": {"parent": [0, 3], "action": "RIGHT", "arrow": "\u2192"}}, "activeArrow": {"from": [0, 3], "to": [0, 4]}, "recentSticky": {"cell": [0, 4], "from": [0, 3]}, "rejectedAttempt": null, "pathSoFar": [], "pathFlipped": false, "walkerCell": null, "highlightedTableRow": "0,4", "level": 4}, {"sceneId": 3, "sceneName": "Memory Table", "sceneTitle": "3. Memory Table", "narration": "Popped state (2,1) from frontier. Expanding its legal actions (Up, Right, Down, Left)...", "aiConcept": "Frontier Expansion (FIFO Queue)", "explanation": "BFS processes states in first-in, first-out order. State (2,1) is at Level 3.", "currentCell": [2, 1], "queue": [[3, 0], [0, 4]], "explored": [[0, 0], [0, 1], [1, 0], [0, 2], [2, 0], [0, 3], [2, 1], [3, 0], [0, 4]], "parentMap": {"0,1": {"parent": [0, 0], "action": "RIGHT", "arrow": "\u2192"}, "1,0": {"parent": [0, 0], "action": "DOWN", "arrow": "\u2193"}, "0,2": {"parent": [0, 1], "action": "RIGHT", "arrow": "\u2192"}, "2,0": {"parent": [1, 0], "action": "DOWN", "arrow": "\u2193"}, "0,3": {"parent": [0, 2], "action": "RIGHT", "arrow": "\u2192"}, "2,1": {"parent": [2, 0], "action": "RIGHT", "arrow": "\u2192"}, "3,0": {"parent": [2, 0], "action": "DOWN", "arrow": "\u2193"}, "0,4": {"parent": [0, 3], "action": "RIGHT", "arrow": "\u2192"}}, "activeArrow": null, "recentSticky": null, "rejectedAttempt": null, "pathSoFar": [], "pathFlipped": false, "walkerCell": null, "highlightedTableRow": null, "level": 3}, {"sceneId": 3, "sceneName": "Memory Table", "sceneTitle": "3. Memory Table", "narration": "Action DOWN: Discovered (3,1). Arrow points from parent (2,1). 'came from (2,1)' tag recorded.", "aiConcept": "Sticky Note / Backpointer", "explanation": "New cell (3,1) is linked to parent (2,1). Table records: parent[(3,1)] = (2,1).", "currentCell": [2, 1], "queue": [[3, 0], [0, 4], [3, 1]], "explored": [[0, 0], [0, 1], [1, 0], [0, 2], [2, 0], [0, 3], [2, 1], [3, 0], [0, 4], [3, 1]], "parentMap": {"0,1": {"parent": [0, 0], "action": "RIGHT", "arrow": "\u2192"}, "1,0": {"parent": [0, 0], "action": "DOWN", "arrow": "\u2193"}, "0,2": {"parent": [0, 1], "action": "RIGHT", "arrow": "\u2192"}, "2,0": {"parent": [1, 0], "action": "DOWN", "arrow": "\u2193"}, "0,3": {"parent": [0, 2], "action": "RIGHT", "arrow": "\u2192"}, "2,1": {"parent": [2, 0], "action": "RIGHT", "arrow": "\u2192"}, "3,0": {"parent": [2, 0], "action": "DOWN", "arrow": "\u2193"}, "0,4": {"parent": [0, 3], "action": "RIGHT", "arrow": "\u2192"}, "3,1": {"parent": [2, 1], "action": "DOWN", "arrow": "\u2193"}}, "activeArrow": {"from": [2, 1], "to": [3, 1]}, "recentSticky": {"cell": [3, 1], "from": [2, 1]}, "rejectedAttempt": null, "pathSoFar": [], "pathFlipped": false, "walkerCell": null, "highlightedTableRow": "3,1", "level": 4}, {"sceneId": 3, "sceneName": "Memory Table", "sceneTitle": "3. Memory Table", "narration": "Popped state (3,0) from frontier. Expanding its legal actions (Up, Right, Down, Left)...", "aiConcept": "Frontier Expansion (FIFO Queue)", "explanation": "BFS processes states in first-in, first-out order. State (3,0) is at Level 3.", "currentCell": [3, 0], "queue": [[0, 4], [3, 1]], "explored": [[0, 0], [0, 1], [1, 0], [0, 2], [2, 0], [0, 3], [2, 1], [3, 0], [0, 4], [3, 1]], "parentMap": {"0,1": {"parent": [0, 0], "action": "RIGHT", "arrow": "\u2192"}, "1,0": {"parent": [0, 0], "action": "DOWN", "arrow": "\u2193"}, "0,2": {"parent": [0, 1], "action": "RIGHT", "arrow": "\u2192"}, "2,0": {"parent": [1, 0], "action": "DOWN", "arrow": "\u2193"}, "0,3": {"parent": [0, 2], "action": "RIGHT", "arrow": "\u2192"}, "2,1": {"parent": [2, 0], "action": "RIGHT", "arrow": "\u2192"}, "3,0": {"parent": [2, 0], "action": "DOWN", "arrow": "\u2193"}, "0,4": {"parent": [0, 3], "action": "RIGHT", "arrow": "\u2192"}, "3,1": {"parent": [2, 1], "action": "DOWN", "arrow": "\u2193"}}, "activeArrow": null, "recentSticky": null, "rejectedAttempt": null, "pathSoFar": [], "pathFlipped": false, "walkerCell": null, "highlightedTableRow": null, "level": 3}, {"sceneId": 3, "sceneName": "Memory Table", "sceneTitle": "3. Memory Table", "narration": "Action RIGHT: Cell (3,1) was ALREADY reached from (2,1)! First discovery wins: parent is NOT overwritten.", "aiConcept": "Rule: First Discovery Wins", "explanation": "Cell (3,1) is reachable from (3,0), but it was already discovered earlier. BFS never overwrites an existing parent pointer!", "currentCell": [3, 0], "queue": [[0, 4], [3, 1]], "explored": [[0, 0], [0, 1], [1, 0], [0, 2], [2, 0], [0, 3], [2, 1], [3, 0], [0, 4], [3, 1]], "parentMap": {"0,1": {"parent": [0, 0], "action": "RIGHT", "arrow": "\u2192"}, "1,0": {"parent": [0, 0], "action": "DOWN", "arrow": "\u2193"}, "0,2": {"parent": [0, 1], "action": "RIGHT", "arrow": "\u2192"}, "2,0": {"parent": [1, 0], "action": "DOWN", "arrow": "\u2193"}, "0,3": {"parent": [0, 2], "action": "RIGHT", "arrow": "\u2192"}, "2,1": {"parent": [2, 0], "action": "RIGHT", "arrow": "\u2192"}, "3,0": {"parent": [2, 0], "action": "DOWN", "arrow": "\u2193"}, "0,4": {"parent": [0, 3], "action": "RIGHT", "arrow": "\u2192"}, "3,1": {"parent": [2, 1], "action": "DOWN", "arrow": "\u2193"}}, "activeArrow": null, "recentSticky": null, "rejectedAttempt": {"from": [3, 0], "to": [3, 1]}, "pathSoFar": [], "pathFlipped": false, "walkerCell": null, "highlightedTableRow": "3,1", "level": 3}, {"sceneId": 3, "sceneName": "Memory Table", "sceneTitle": "3. Memory Table", "narration": "Popped state (0,4) from frontier. Expanding its legal actions (Up, Right, Down, Left)...", "aiConcept": "Frontier Expansion (FIFO Queue)", "explanation": "BFS processes states in first-in, first-out order. State (0,4) is at Level 4.", "currentCell": [0, 4], "queue": [[3, 1]], "explored": [[0, 0], [0, 1], [1, 0], [0, 2], [2, 0], [0, 3], [2, 1], [3, 0], [0, 4], [3, 1]], "parentMap": {"0,1": {"parent": [0, 0], "action": "RIGHT", "arrow": "\u2192"}, "1,0": {"parent": [0, 0], "action": "DOWN", "arrow": "\u2193"}, "0,2": {"parent": [0, 1], "action": "RIGHT", "arrow": "\u2192"}, "2,0": {"parent": [1, 0], "action": "DOWN", "arrow": "\u2193"}, "0,3": {"parent": [0, 2], "action": "RIGHT", "arrow": "\u2192"}, "2,1": {"parent": [2, 0], "action": "RIGHT", "arrow": "\u2192"}, "3,0": {"parent": [2, 0], "action": "DOWN", "arrow": "\u2193"}, "0,4": {"parent": [0, 3], "action": "RIGHT", "arrow": "\u2192"}, "3,1": {"parent": [2, 1], "action": "DOWN", "arrow": "\u2193"}}, "activeArrow": null, "recentSticky": null, "rejectedAttempt": null, "pathSoFar": [], "pathFlipped": false, "walkerCell": null, "highlightedTableRow": null, "level": 4}, {"sceneId": 3, "sceneName": "Memory Table", "sceneTitle": "3. Memory Table", "narration": "Action DOWN: Discovered (1,4). Arrow points from parent (0,4). 'came from (0,4)' tag recorded.", "aiConcept": "Sticky Note / Backpointer", "explanation": "New cell (1,4) is linked to parent (0,4). Table records: parent[(1,4)] = (0,4).", "currentCell": [0, 4], "queue": [[3, 1], [1, 4]], "explored": [[0, 0], [0, 1], [1, 0], [0, 2], [2, 0], [0, 3], [2, 1], [3, 0], [0, 4], [3, 1], [1, 4]], "parentMap": {"0,1": {"parent": [0, 0], "action": "RIGHT", "arrow": "\u2192"}, "1,0": {"parent": [0, 0], "action": "DOWN", "arrow": "\u2193"}, "0,2": {"parent": [0, 1], "action": "RIGHT", "arrow": "\u2192"}, "2,0": {"parent": [1, 0], "action": "DOWN", "arrow": "\u2193"}, "0,3": {"parent": [0, 2], "action": "RIGHT", "arrow": "\u2192"}, "2,1": {"parent": [2, 0], "action": "RIGHT", "arrow": "\u2192"}, "3,0": {"parent": [2, 0], "action": "DOWN", "arrow": "\u2193"}, "0,4": {"parent": [0, 3], "action": "RIGHT", "arrow": "\u2192"}, "3,1": {"parent": [2, 1], "action": "DOWN", "arrow": "\u2193"}, "1,4": {"parent": [0, 4], "action": "DOWN", "arrow": "\u2193"}}, "activeArrow": {"from": [0, 4], "to": [1, 4]}, "recentSticky": {"cell": [1, 4], "from": [0, 4]}, "rejectedAttempt": null, "pathSoFar": [], "pathFlipped": false, "walkerCell": null, "highlightedTableRow": "1,4", "level": 5}, {"sceneId": 3, "sceneName": "Memory Table", "sceneTitle": "3. Memory Table", "narration": "Popped state (3,1) from frontier. Expanding its legal actions (Up, Right, Down, Left)...", "aiConcept": "Frontier Expansion (FIFO Queue)", "explanation": "BFS processes states in first-in, first-out order. State (3,1) is at Level 4.", "currentCell": [3, 1], "queue": [[1, 4]], "explored": [[0, 0], [0, 1], [1, 0], [0, 2], [2, 0], [0, 3], [2, 1], [3, 0], [0, 4], [3, 1], [1, 4]], "parentMap": {"0,1": {"parent": [0, 0], "action": "RIGHT", "arrow": "\u2192"}, "1,0": {"parent": [0, 0], "action": "DOWN", "arrow": "\u2193"}, "0,2": {"parent": [0, 1], "action": "RIGHT", "arrow": "\u2192"}, "2,0": {"parent": [1, 0], "action": "DOWN", "arrow": "\u2193"}, "0,3": {"parent": [0, 2], "action": "RIGHT", "arrow": "\u2192"}, "2,1": {"parent": [2, 0], "action": "RIGHT", "arrow": "\u2192"}, "3,0": {"parent": [2, 0], "action": "DOWN", "arrow": "\u2193"}, "0,4": {"parent": [0, 3], "action": "RIGHT", "arrow": "\u2192"}, "3,1": {"parent": [2, 1], "action": "DOWN", "arrow": "\u2193"}, "1,4": {"parent": [0, 4], "action": "DOWN", "arrow": "\u2193"}}, "activeArrow": null, "recentSticky": null, "rejectedAttempt": null, "pathSoFar": [], "pathFlipped": false, "walkerCell": null, "highlightedTableRow": null, "level": 4}, {"sceneId": 3, "sceneName": "Memory Table", "sceneTitle": "3. Memory Table", "narration": "Action DOWN: Discovered (4,1). Arrow points from parent (3,1). 'came from (3,1)' tag recorded.", "aiConcept": "Sticky Note / Backpointer", "explanation": "New cell (4,1) is linked to parent (3,1). Table records: parent[(4,1)] = (3,1).", "currentCell": [3, 1], "queue": [[1, 4], [4, 1]], "explored": [[0, 0], [0, 1], [1, 0], [0, 2], [2, 0], [0, 3], [2, 1], [3, 0], [0, 4], [3, 1], [1, 4], [4, 1]], "parentMap": {"0,1": {"parent": [0, 0], "action": "RIGHT", "arrow": "\u2192"}, "1,0": {"parent": [0, 0], "action": "DOWN", "arrow": "\u2193"}, "0,2": {"parent": [0, 1], "action": "RIGHT", "arrow": "\u2192"}, "2,0": {"parent": [1, 0], "action": "DOWN", "arrow": "\u2193"}, "0,3": {"parent": [0, 2], "action": "RIGHT", "arrow": "\u2192"}, "2,1": {"parent": [2, 0], "action": "RIGHT", "arrow": "\u2192"}, "3,0": {"parent": [2, 0], "action": "DOWN", "arrow": "\u2193"}, "0,4": {"parent": [0, 3], "action": "RIGHT", "arrow": "\u2192"}, "3,1": {"parent": [2, 1], "action": "DOWN", "arrow": "\u2193"}, "1,4": {"parent": [0, 4], "action": "DOWN", "arrow": "\u2193"}, "4,1": {"parent": [3, 1], "action": "DOWN", "arrow": "\u2193"}}, "activeArrow": {"from": [3, 1], "to": [4, 1]}, "recentSticky": {"cell": [4, 1], "from": [3, 1]}, "rejectedAttempt": null, "pathSoFar": [], "pathFlipped": false, "walkerCell": null, "highlightedTableRow": "4,1", "level": 5}, {"sceneId": 3, "sceneName": "Memory Table", "sceneTitle": "3. Memory Table", "narration": "Action LEFT: Cell (3,0) was ALREADY reached from (2,0)! First discovery wins: parent is NOT overwritten.", "aiConcept": "Rule: First Discovery Wins", "explanation": "Cell (3,0) is reachable from (3,1), but it was already discovered earlier. BFS never overwrites an existing parent pointer!", "currentCell": [3, 1], "queue": [[1, 4], [4, 1]], "explored": [[0, 0], [0, 1], [1, 0], [0, 2], [2, 0], [0, 3], [2, 1], [3, 0], [0, 4], [3, 1], [1, 4], [4, 1]], "parentMap": {"0,1": {"parent": [0, 0], "action": "RIGHT", "arrow": "\u2192"}, "1,0": {"parent": [0, 0], "action": "DOWN", "arrow": "\u2193"}, "0,2": {"parent": [0, 1], "action": "RIGHT", "arrow": "\u2192"}, "2,0": {"parent": [1, 0], "action": "DOWN", "arrow": "\u2193"}, "0,3": {"parent": [0, 2], "action": "RIGHT", "arrow": "\u2192"}, "2,1": {"parent": [2, 0], "action": "RIGHT", "arrow": "\u2192"}, "3,0": {"parent": [2, 0], "action": "DOWN", "arrow": "\u2193"}, "0,4": {"parent": [0, 3], "action": "RIGHT", "arrow": "\u2192"}, "3,1": {"parent": [2, 1], "action": "DOWN", "arrow": "\u2193"}, "1,4": {"parent": [0, 4], "action": "DOWN", "arrow": "\u2193"}, "4,1": {"parent": [3, 1], "action": "DOWN", "arrow": "\u2193"}}, "activeArrow": null, "recentSticky": null, "rejectedAttempt": {"from": [3, 1], "to": [3, 0]}, "pathSoFar": [], "pathFlipped": false, "walkerCell": null, "highlightedTableRow": "3,0", "level": 4}, {"sceneId": 3, "sceneName": "Memory Table", "sceneTitle": "3. Memory Table", "narration": "Popped state (1,4) from frontier. Expanding its legal actions (Up, Right, Down, Left)...", "aiConcept": "Frontier Expansion (FIFO Queue)", "explanation": "BFS processes states in first-in, first-out order. State (1,4) is at Level 5.", "currentCell": [1, 4], "queue": [[4, 1]], "explored": [[0, 0], [0, 1], [1, 0], [0, 2], [2, 0], [0, 3], [2, 1], [3, 0], [0, 4], [3, 1], [1, 4], [4, 1]], "parentMap": {"0,1": {"parent": [0, 0], "action": "RIGHT", "arrow": "\u2192"}, "1,0": {"parent": [0, 0], "action": "DOWN", "arrow": "\u2193"}, "0,2": {"parent": [0, 1], "action": "RIGHT", "arrow": "\u2192"}, "2,0": {"parent": [1, 0], "action": "DOWN", "arrow": "\u2193"}, "0,3": {"parent": [0, 2], "action": "RIGHT", "arrow": "\u2192"}, "2,1": {"parent": [2, 0], "action": "RIGHT", "arrow": "\u2192"}, "3,0": {"parent": [2, 0], "action": "DOWN", "arrow": "\u2193"}, "0,4": {"parent": [0, 3], "action": "RIGHT", "arrow": "\u2192"}, "3,1": {"parent": [2, 1], "action": "DOWN", "arrow": "\u2193"}, "1,4": {"parent": [0, 4], "action": "DOWN", "arrow": "\u2193"}, "4,1": {"parent": [3, 1], "action": "DOWN", "arrow": "\u2193"}}, "activeArrow": null, "recentSticky": null, "rejectedAttempt": null, "pathSoFar": [], "pathFlipped": false, "walkerCell": null, "highlightedTableRow": null, "level": 5}, {"sceneId": 3, "sceneName": "Memory Table", "sceneTitle": "3. Memory Table", "narration": "Action DOWN: Discovered (2,4). Arrow points from parent (1,4). 'came from (1,4)' tag recorded.", "aiConcept": "Sticky Note / Backpointer", "explanation": "New cell (2,4) is linked to parent (1,4). Table records: parent[(2,4)] = (1,4).", "currentCell": [1, 4], "queue": [[4, 1], [2, 4]], "explored": [[0, 0], [0, 1], [1, 0], [0, 2], [2, 0], [0, 3], [2, 1], [3, 0], [0, 4], [3, 1], [1, 4], [4, 1], [2, 4]], "parentMap": {"0,1": {"parent": [0, 0], "action": "RIGHT", "arrow": "\u2192"}, "1,0": {"parent": [0, 0], "action": "DOWN", "arrow": "\u2193"}, "0,2": {"parent": [0, 1], "action": "RIGHT", "arrow": "\u2192"}, "2,0": {"parent": [1, 0], "action": "DOWN", "arrow": "\u2193"}, "0,3": {"parent": [0, 2], "action": "RIGHT", "arrow": "\u2192"}, "2,1": {"parent": [2, 0], "action": "RIGHT", "arrow": "\u2192"}, "3,0": {"parent": [2, 0], "action": "DOWN", "arrow": "\u2193"}, "0,4": {"parent": [0, 3], "action": "RIGHT", "arrow": "\u2192"}, "3,1": {"parent": [2, 1], "action": "DOWN", "arrow": "\u2193"}, "1,4": {"parent": [0, 4], "action": "DOWN", "arrow": "\u2193"}, "4,1": {"parent": [3, 1], "action": "DOWN", "arrow": "\u2193"}, "2,4": {"parent": [1, 4], "action": "DOWN", "arrow": "\u2193"}}, "activeArrow": {"from": [1, 4], "to": [2, 4]}, "recentSticky": {"cell": [2, 4], "from": [1, 4]}, "rejectedAttempt": null, "pathSoFar": [], "pathFlipped": false, "walkerCell": null, "highlightedTableRow": "2,4", "level": 6}, {"sceneId": 3, "sceneName": "Memory Table", "sceneTitle": "3. Memory Table", "narration": "Popped state (4,1) from frontier. Expanding its legal actions (Up, Right, Down, Left)...", "aiConcept": "Frontier Expansion (FIFO Queue)", "explanation": "BFS processes states in first-in, first-out order. State (4,1) is at Level 5.", "currentCell": [4, 1], "queue": [[2, 4]], "explored": [[0, 0], [0, 1], [1, 0], [0, 2], [2, 0], [0, 3], [2, 1], [3, 0], [0, 4], [3, 1], [1, 4], [4, 1], [2, 4]], "parentMap": {"0,1": {"parent": [0, 0], "action": "RIGHT", "arrow": "\u2192"}, "1,0": {"parent": [0, 0], "action": "DOWN", "arrow": "\u2193"}, "0,2": {"parent": [0, 1], "action": "RIGHT", "arrow": "\u2192"}, "2,0": {"parent": [1, 0], "action": "DOWN", "arrow": "\u2193"}, "0,3": {"parent": [0, 2], "action": "RIGHT", "arrow": "\u2192"}, "2,1": {"parent": [2, 0], "action": "RIGHT", "arrow": "\u2192"}, "3,0": {"parent": [2, 0], "action": "DOWN", "arrow": "\u2193"}, "0,4": {"parent": [0, 3], "action": "RIGHT", "arrow": "\u2192"}, "3,1": {"parent": [2, 1], "action": "DOWN", "arrow": "\u2193"}, "1,4": {"parent": [0, 4], "action": "DOWN", "arrow": "\u2193"}, "4,1": {"parent": [3, 1], "action": "DOWN", "arrow": "\u2193"}, "2,4": {"parent": [1, 4], "action": "DOWN", "arrow": "\u2193"}}, "activeArrow": null, "recentSticky": null, "rejectedAttempt": null, "pathSoFar": [], "pathFlipped": false, "walkerCell": null, "highlightedTableRow": null, "level": 5}, {"sceneId": 3, "sceneName": "Memory Table", "sceneTitle": "3. Memory Table", "narration": "Action RIGHT: Discovered (4,2). Arrow points from parent (4,1). 'came from (4,1)' tag recorded.", "aiConcept": "Sticky Note / Backpointer", "explanation": "New cell (4,2) is linked to parent (4,1). Table records: parent[(4,2)] = (4,1).", "currentCell": [4, 1], "queue": [[2, 4], [4, 2]], "explored": [[0, 0], [0, 1], [1, 0], [0, 2], [2, 0], [0, 3], [2, 1], [3, 0], [0, 4], [3, 1], [1, 4], [4, 1], [2, 4], [4, 2]], "parentMap": {"0,1": {"parent": [0, 0], "action": "RIGHT", "arrow": "\u2192"}, "1,0": {"parent": [0, 0], "action": "DOWN", "arrow": "\u2193"}, "0,2": {"parent": [0, 1], "action": "RIGHT", "arrow": "\u2192"}, "2,0": {"parent": [1, 0], "action": "DOWN", "arrow": "\u2193"}, "0,3": {"parent": [0, 2], "action": "RIGHT", "arrow": "\u2192"}, "2,1": {"parent": [2, 0], "action": "RIGHT", "arrow": "\u2192"}, "3,0": {"parent": [2, 0], "action": "DOWN", "arrow": "\u2193"}, "0,4": {"parent": [0, 3], "action": "RIGHT", "arrow": "\u2192"}, "3,1": {"parent": [2, 1], "action": "DOWN", "arrow": "\u2193"}, "1,4": {"parent": [0, 4], "action": "DOWN", "arrow": "\u2193"}, "4,1": {"parent": [3, 1], "action": "DOWN", "arrow": "\u2193"}, "2,4": {"parent": [1, 4], "action": "DOWN", "arrow": "\u2193"}, "4,2": {"parent": [4, 1], "action": "RIGHT", "arrow": "\u2192"}}, "activeArrow": {"from": [4, 1], "to": [4, 2]}, "recentSticky": {"cell": [4, 2], "from": [4, 1]}, "rejectedAttempt": null, "pathSoFar": [], "pathFlipped": false, "walkerCell": null, "highlightedTableRow": "4,2", "level": 6}, {"sceneId": 3, "sceneName": "Memory Table", "sceneTitle": "3. Memory Table", "narration": "Popped state (2,4) from frontier. Expanding its legal actions (Up, Right, Down, Left)...", "aiConcept": "Frontier Expansion (FIFO Queue)", "explanation": "BFS processes states in first-in, first-out order. State (2,4) is at Level 6.", "currentCell": [2, 4], "queue": [[4, 2]], "explored": [[0, 0], [0, 1], [1, 0], [0, 2], [2, 0], [0, 3], [2, 1], [3, 0], [0, 4], [3, 1], [1, 4], [4, 1], [2, 4], [4, 2]], "parentMap": {"0,1": {"parent": [0, 0], "action": "RIGHT", "arrow": "\u2192"}, "1,0": {"parent": [0, 0], "action": "DOWN", "arrow": "\u2193"}, "0,2": {"parent": [0, 1], "action": "RIGHT", "arrow": "\u2192"}, "2,0": {"parent": [1, 0], "action": "DOWN", "arrow": "\u2193"}, "0,3": {"parent": [0, 2], "action": "RIGHT", "arrow": "\u2192"}, "2,1": {"parent": [2, 0], "action": "RIGHT", "arrow": "\u2192"}, "3,0": {"parent": [2, 0], "action": "DOWN", "arrow": "\u2193"}, "0,4": {"parent": [0, 3], "action": "RIGHT", "arrow": "\u2192"}, "3,1": {"parent": [2, 1], "action": "DOWN", "arrow": "\u2193"}, "1,4": {"parent": [0, 4], "action": "DOWN", "arrow": "\u2193"}, "4,1": {"parent": [3, 1], "action": "DOWN", "arrow": "\u2193"}, "2,4": {"parent": [1, 4], "action": "DOWN", "arrow": "\u2193"}, "4,2": {"parent": [4, 1], "action": "RIGHT", "arrow": "\u2192"}}, "activeArrow": null, "recentSticky": null, "rejectedAttempt": null, "pathSoFar": [], "pathFlipped": false, "walkerCell": null, "highlightedTableRow": null, "level": 6}, {"sceneId": 3, "sceneName": "Memory Table", "sceneTitle": "3. Memory Table", "narration": "Popped state (4,2) from frontier. Expanding its legal actions (Up, Right, Down, Left)...", "aiConcept": "Frontier Expansion (FIFO Queue)", "explanation": "BFS processes states in first-in, first-out order. State (4,2) is at Level 6.", "currentCell": [4, 2], "queue": [], "explored": [[0, 0], [0, 1], [1, 0], [0, 2], [2, 0], [0, 3], [2, 1], [3, 0], [0, 4], [3, 1], [1, 4], [4, 1], [2, 4], [4, 2]], "parentMap": {"0,1": {"parent": [0, 0], "action": "RIGHT", "arrow": "\u2192"}, "1,0": {"parent": [0, 0], "action": "DOWN", "arrow": "\u2193"}, "0,2": {"parent": [0, 1], "action": "RIGHT", "arrow": "\u2192"}, "2,0": {"parent": [1, 0], "action": "DOWN", "arrow": "\u2193"}, "0,3": {"parent": [0, 2], "action": "RIGHT", "arrow": "\u2192"}, "2,1": {"parent": [2, 0], "action": "RIGHT", "arrow": "\u2192"}, "3,0": {"parent": [2, 0], "action": "DOWN", "arrow": "\u2193"}, "0,4": {"parent": [0, 3], "action": "RIGHT", "arrow": "\u2192"}, "3,1": {"parent": [2, 1], "action": "DOWN", "arrow": "\u2193"}, "1,4": {"parent": [0, 4], "action": "DOWN", "arrow": "\u2193"}, "4,1": {"parent": [3, 1], "action": "DOWN", "arrow": "\u2193"}, "2,4": {"parent": [1, 4], "action": "DOWN", "arrow": "\u2193"}, "4,2": {"parent": [4, 1], "action": "RIGHT", "arrow": "\u2192"}}, "activeArrow": null, "recentSticky": null, "rejectedAttempt": null, "pathSoFar": [], "pathFlipped": false, "walkerCell": null, "highlightedTableRow": null, "level": 6}, {"sceneId": 3, "sceneName": "Memory Table", "sceneTitle": "3. Memory Table", "narration": "Action RIGHT: Discovered (4,3). Arrow points from parent (4,2). 'came from (4,2)' tag recorded.", "aiConcept": "Sticky Note / Backpointer", "explanation": "New cell (4,3) is linked to parent (4,2). Table records: parent[(4,3)] = (4,2).", "currentCell": [4, 2], "queue": [[4, 3]], "explored": [[0, 0], [0, 1], [1, 0], [0, 2], [2, 0], [0, 3], [2, 1], [3, 0], [0, 4], [3, 1], [1, 4], [4, 1], [2, 4], [4, 2], [4, 3]], "parentMap": {"0,1": {"parent": [0, 0], "action": "RIGHT", "arrow": "\u2192"}, "1,0": {"parent": [0, 0], "action": "DOWN", "arrow": "\u2193"}, "0,2": {"parent": [0, 1], "action": "RIGHT", "arrow": "\u2192"}, "2,0": {"parent": [1, 0], "action": "DOWN", "arrow": "\u2193"}, "0,3": {"parent": [0, 2], "action": "RIGHT", "arrow": "\u2192"}, "2,1": {"parent": [2, 0], "action": "RIGHT", "arrow": "\u2192"}, "3,0": {"parent": [2, 0], "action": "DOWN", "arrow": "\u2193"}, "0,4": {"parent": [0, 3], "action": "RIGHT", "arrow": "\u2192"}, "3,1": {"parent": [2, 1], "action": "DOWN", "arrow": "\u2193"}, "1,4": {"parent": [0, 4], "action": "DOWN", "arrow": "\u2193"}, "4,1": {"parent": [3, 1], "action": "DOWN", "arrow": "\u2193"}, "2,4": {"parent": [1, 4], "action": "DOWN", "arrow": "\u2193"}, "4,2": {"parent": [4, 1], "action": "RIGHT", "arrow": "\u2192"}, "4,3": {"parent": [4, 2], "action": "RIGHT", "arrow": "\u2192"}}, "activeArrow": {"from": [4, 2], "to": [4, 3]}, "recentSticky": {"cell": [4, 3], "from": [4, 2]}, "rejectedAttempt": null, "pathSoFar": [], "pathFlipped": false, "walkerCell": null, "highlightedTableRow": "4,3", "level": 7}, {"sceneId": 3, "sceneName": "Memory Table", "sceneTitle": "3. Memory Table", "narration": "Popped state (4,3) from frontier. Expanding its legal actions (Up, Right, Down, Left)...", "aiConcept": "Frontier Expansion (FIFO Queue)", "explanation": "BFS processes states in first-in, first-out order. State (4,3) is at Level 7.", "currentCell": [4, 3], "queue": [], "explored": [[0, 0], [0, 1], [1, 0], [0, 2], [2, 0], [0, 3], [2, 1], [3, 0], [0, 4], [3, 1], [1, 4], [4, 1], [2, 4], [4, 2], [4, 3]], "parentMap": {"0,1": {"parent": [0, 0], "action": "RIGHT", "arrow": "\u2192"}, "1,0": {"parent": [0, 0], "action": "DOWN", "arrow": "\u2193"}, "0,2": {"parent": [0, 1], "action": "RIGHT", "arrow": "\u2192"}, "2,0": {"parent": [1, 0], "action": "DOWN", "arrow": "\u2193"}, "0,3": {"parent": [0, 2], "action": "RIGHT", "arrow": "\u2192"}, "2,1": {"parent": [2, 0], "action": "RIGHT", "arrow": "\u2192"}, "3,0": {"parent": [2, 0], "action": "DOWN", "arrow": "\u2193"}, "0,4": {"parent": [0, 3], "action": "RIGHT", "arrow": "\u2192"}, "3,1": {"parent": [2, 1], "action": "DOWN", "arrow": "\u2193"}, "1,4": {"parent": [0, 4], "action": "DOWN", "arrow": "\u2193"}, "4,1": {"parent": [3, 1], "action": "DOWN", "arrow": "\u2193"}, "2,4": {"parent": [1, 4], "action": "DOWN", "arrow": "\u2193"}, "4,2": {"parent": [4, 1], "action": "RIGHT", "arrow": "\u2192"}, "4,3": {"parent": [4, 2], "action": "RIGHT", "arrow": "\u2192"}}, "activeArrow": null, "recentSticky": null, "rejectedAttempt": null, "pathSoFar": [], "pathFlipped": false, "walkerCell": null, "highlightedTableRow": null, "level": 7}, {"sceneId": 3, "sceneName": "Memory Table", "sceneTitle": "3. Memory Table", "narration": "Action RIGHT: Discovered (4,4). Arrow points from parent (4,3). 'came from (4,3)' tag recorded.", "aiConcept": "Sticky Note / Backpointer", "explanation": "New cell (4,4) is linked to parent (4,3). Table records: parent[(4,4)] = (4,3).", "currentCell": [4, 3], "queue": [[4, 4]], "explored": [[0, 0], [0, 1], [1, 0], [0, 2], [2, 0], [0, 3], [2, 1], [3, 0], [0, 4], [3, 1], [1, 4], [4, 1], [2, 4], [4, 2], [4, 3], [4, 4]], "parentMap": {"0,1": {"parent": [0, 0], "action": "RIGHT", "arrow": "\u2192"}, "1,0": {"parent": [0, 0], "action": "DOWN", "arrow": "\u2193"}, "0,2": {"parent": [0, 1], "action": "RIGHT", "arrow": "\u2192"}, "2,0": {"parent": [1, 0], "action": "DOWN", "arrow": "\u2193"}, "0,3": {"parent": [0, 2], "action": "RIGHT", "arrow": "\u2192"}, "2,1": {"parent": [2, 0], "action": "RIGHT", "arrow": "\u2192"}, "3,0": {"parent": [2, 0], "action": "DOWN", "arrow": "\u2193"}, "0,4": {"parent": [0, 3], "action": "RIGHT", "arrow": "\u2192"}, "3,1": {"parent": [2, 1], "action": "DOWN", "arrow": "\u2193"}, "1,4": {"parent": [0, 4], "action": "DOWN", "arrow": "\u2193"}, "4,1": {"parent": [3, 1], "action": "DOWN", "arrow": "\u2193"}, "2,4": {"parent": [1, 4], "action": "DOWN", "arrow": "\u2193"}, "4,2": {"parent": [4, 1], "action": "RIGHT", "arrow": "\u2192"}, "4,3": {"parent": [4, 2], "action": "RIGHT", "arrow": "\u2192"}, "4,4": {"parent": [4, 3], "action": "RIGHT", "arrow": "\u2192"}}, "activeArrow": {"from": [4, 3], "to": [4, 4]}, "recentSticky": {"cell": [4, 4], "from": [4, 3]}, "rejectedAttempt": null, "pathSoFar": [], "pathFlipped": false, "walkerCell": null, "highlightedTableRow": "4,4", "level": 8}, {"sceneId": 3, "sceneName": "Memory Table", "sceneTitle": "3. Memory Table", "narration": "Popped state (4,4) from frontier. Expanding its legal actions (Up, Right, Down, Left)...", "aiConcept": "Frontier Expansion (FIFO Queue)", "explanation": "BFS processes states in first-in, first-out order. State (4,4) is at Level 8.", "currentCell": [4, 4], "queue": [], "explored": [[0, 0], [0, 1], [1, 0], [0, 2], [2, 0], [0, 3], [2, 1], [3, 0], [0, 4], [3, 1], [1, 4], [4, 1], [2, 4], [4, 2], [4, 3], [4, 4]], "parentMap": {"0,1": {"parent": [0, 0], "action": "RIGHT", "arrow": "\u2192"}, "1,0": {"parent": [0, 0], "action": "DOWN", "arrow": "\u2193"}, "0,2": {"parent": [0, 1], "action": "RIGHT", "arrow": "\u2192"}, "2,0": {"parent": [1, 0], "action": "DOWN", "arrow": "\u2193"}, "0,3": {"parent": [0, 2], "action": "RIGHT", "arrow": "\u2192"}, "2,1": {"parent": [2, 0], "action": "RIGHT", "arrow": "\u2192"}, "3,0": {"parent": [2, 0], "action": "DOWN", "arrow": "\u2193"}, "0,4": {"parent": [0, 3], "action": "RIGHT", "arrow": "\u2192"}, "3,1": {"parent": [2, 1], "action": "DOWN", "arrow": "\u2193"}, "1,4": {"parent": [0, 4], "action": "DOWN", "arrow": "\u2193"}, "4,1": {"parent": [3, 1], "action": "DOWN", "arrow": "\u2193"}, "2,4": {"parent": [1, 4], "action": "DOWN", "arrow": "\u2193"}, "4,2": {"parent": [4, 1], "action": "RIGHT", "arrow": "\u2192"}, "4,3": {"parent": [4, 2], "action": "RIGHT", "arrow": "\u2192"}, "4,4": {"parent": [4, 3], "action": "RIGHT", "arrow": "\u2192"}}, "activeArrow": null, "recentSticky": null, "rejectedAttempt": null, "pathSoFar": [], "pathFlipped": false, "walkerCell": null, "highlightedTableRow": null, "level": 8}, {"sceneId": 3, "sceneName": "Memory Table", "sceneTitle": "3. Memory Table", "narration": "Action RIGHT: Discovered (4,5). Arrow points from parent (4,4). 'came from (4,4)' tag recorded.", "aiConcept": "Sticky Note / Backpointer", "explanation": "New cell (4,5) is linked to parent (4,4). Table records: parent[(4,5)] = (4,4).", "currentCell": [4, 4], "queue": [[4, 5]], "explored": [[0, 0], [0, 1], [1, 0], [0, 2], [2, 0], [0, 3], [2, 1], [3, 0], [0, 4], [3, 1], [1, 4], [4, 1], [2, 4], [4, 2], [4, 3], [4, 4], [4, 5]], "parentMap": {"0,1": {"parent": [0, 0], "action": "RIGHT", "arrow": "\u2192"}, "1,0": {"parent": [0, 0], "action": "DOWN", "arrow": "\u2193"}, "0,2": {"parent": [0, 1], "action": "RIGHT", "arrow": "\u2192"}, "2,0": {"parent": [1, 0], "action": "DOWN", "arrow": "\u2193"}, "0,3": {"parent": [0, 2], "action": "RIGHT", "arrow": "\u2192"}, "2,1": {"parent": [2, 0], "action": "RIGHT", "arrow": "\u2192"}, "3,0": {"parent": [2, 0], "action": "DOWN", "arrow": "\u2193"}, "0,4": {"parent": [0, 3], "action": "RIGHT", "arrow": "\u2192"}, "3,1": {"parent": [2, 1], "action": "DOWN", "arrow": "\u2193"}, "1,4": {"parent": [0, 4], "action": "DOWN", "arrow": "\u2193"}, "4,1": {"parent": [3, 1], "action": "DOWN", "arrow": "\u2193"}, "2,4": {"parent": [1, 4], "action": "DOWN", "arrow": "\u2193"}, "4,2": {"parent": [4, 1], "action": "RIGHT", "arrow": "\u2192"}, "4,3": {"parent": [4, 2], "action": "RIGHT", "arrow": "\u2192"}, "4,4": {"parent": [4, 3], "action": "RIGHT", "arrow": "\u2192"}, "4,5": {"parent": [4, 4], "action": "RIGHT", "arrow": "\u2192"}}, "activeArrow": {"from": [4, 4], "to": [4, 5]}, "recentSticky": {"cell": [4, 5], "from": [4, 4]}, "rejectedAttempt": null, "pathSoFar": [], "pathFlipped": false, "walkerCell": null, "highlightedTableRow": "4,5", "level": 9}, {"sceneId": 3, "sceneName": "Memory Table", "sceneTitle": "3. Memory Table", "narration": "Popped state (4,5) from frontier. Expanding its legal actions (Up, Right, Down, Left)...", "aiConcept": "Frontier Expansion (FIFO Queue)", "explanation": "BFS processes states in first-in, first-out order. State (4,5) is at Level 9.", "currentCell": [4, 5], "queue": [], "explored": [[0, 0], [0, 1], [1, 0], [0, 2], [2, 0], [0, 3], [2, 1], [3, 0], [0, 4], [3, 1], [1, 4], [4, 1], [2, 4], [4, 2], [4, 3], [4, 4], [4, 5]], "parentMap": {"0,1": {"parent": [0, 0], "action": "RIGHT", "arrow": "\u2192"}, "1,0": {"parent": [0, 0], "action": "DOWN", "arrow": "\u2193"}, "0,2": {"parent": [0, 1], "action": "RIGHT", "arrow": "\u2192"}, "2,0": {"parent": [1, 0], "action": "DOWN", "arrow": "\u2193"}, "0,3": {"parent": [0, 2], "action": "RIGHT", "arrow": "\u2192"}, "2,1": {"parent": [2, 0], "action": "RIGHT", "arrow": "\u2192"}, "3,0": {"parent": [2, 0], "action": "DOWN", "arrow": "\u2193"}, "0,4": {"parent": [0, 3], "action": "RIGHT", "arrow": "\u2192"}, "3,1": {"parent": [2, 1], "action": "DOWN", "arrow": "\u2193"}, "1,4": {"parent": [0, 4], "action": "DOWN", "arrow": "\u2193"}, "4,1": {"parent": [3, 1], "action": "DOWN", "arrow": "\u2193"}, "2,4": {"parent": [1, 4], "action": "DOWN", "arrow": "\u2193"}, "4,2": {"parent": [4, 1], "action": "RIGHT", "arrow": "\u2192"}, "4,3": {"parent": [4, 2], "action": "RIGHT", "arrow": "\u2192"}, "4,4": {"parent": [4, 3], "action": "RIGHT", "arrow": "\u2192"}, "4,5": {"parent": [4, 4], "action": "RIGHT", "arrow": "\u2192"}}, "activeArrow": null, "recentSticky": null, "rejectedAttempt": null, "pathSoFar": [], "pathFlipped": false, "walkerCell": null, "highlightedTableRow": null, "level": 9}, {"sceneId": 4, "sceneName": "Goal Found", "sceneTitle": "4. Goal Found", "narration": "GOAL REACHED! Action DOWN discovered Goal G (5,5) from (4,5). BFS halts!", "aiConcept": "Goal Test Succeeded", "explanation": "BFS stops the moment Goal G is generated. The entire search tree freezes.", "currentCell": [5, 5], "queue": [[5, 5]], "explored": [[0, 0], [0, 1], [1, 0], [0, 2], [2, 0], [0, 3], [2, 1], [3, 0], [0, 4], [3, 1], [1, 4], [4, 1], [2, 4], [4, 2], [4, 3], [4, 4], [4, 5], [5, 5]], "parentMap": {"0,1": {"parent": [0, 0], "action": "RIGHT", "arrow": "\u2192"}, "1,0": {"parent": [0, 0], "action": "DOWN", "arrow": "\u2193"}, "0,2": {"parent": [0, 1], "action": "RIGHT", "arrow": "\u2192"}, "2,0": {"parent": [1, 0], "action": "DOWN", "arrow": "\u2193"}, "0,3": {"parent": [0, 2], "action": "RIGHT", "arrow": "\u2192"}, "2,1": {"parent": [2, 0], "action": "RIGHT", "arrow": "\u2192"}, "3,0": {"parent": [2, 0], "action": "DOWN", "arrow": "\u2193"}, "0,4": {"parent": [0, 3], "action": "RIGHT", "arrow": "\u2192"}, "3,1": {"parent": [2, 1], "action": "DOWN", "arrow": "\u2193"}, "1,4": {"parent": [0, 4], "action": "DOWN", "arrow": "\u2193"}, "4,1": {"parent": [3, 1], "action": "DOWN", "arrow": "\u2193"}, "2,4": {"parent": [1, 4], "action": "DOWN", "arrow": "\u2193"}, "4,2": {"parent": [4, 1], "action": "RIGHT", "arrow": "\u2192"}, "4,3": {"parent": [4, 2], "action": "RIGHT", "arrow": "\u2192"}, "4,4": {"parent": [4, 3], "action": "RIGHT", "arrow": "\u2192"}, "4,5": {"parent": [4, 4], "action": "RIGHT", "arrow": "\u2192"}, "5,5": {"parent": [4, 5], "action": "DOWN", "arrow": "\u2193"}}, "activeArrow": {"from": [4, 5], "to": [5, 5]}, "recentSticky": {"cell": [5, 5], "from": [4, 5]}, "rejectedAttempt": null, "pathSoFar": [], "pathFlipped": false, "walkerCell": null, "highlightedTableRow": "5,5", "level": 10}, {"sceneId": 4, "sceneName": "Goal Found", "sceneTitle": "4. Goal Found", "narration": "Search freezes! Goal G is found. Notice: BFS has reached G, but the route itself hasn't been extracted yet.", "aiConcept": "Search Termination", "explanation": "BFS has found the exit. Now the payoff: we will follow the parent backpointers from Goal G all the way back to Start S!", "currentCell": [5, 5], "queue": [], "explored": [[0, 0], [0, 1], [1, 0], [0, 2], [2, 0], [0, 3], [2, 1], [3, 0], [0, 4], [3, 1], [1, 4], [4, 1], [2, 4], [4, 2], [4, 3], [4, 4], [4, 5], [5, 5]], "parentMap": {"0,1": {"parent": [0, 0], "action": "RIGHT", "arrow": "\u2192"}, "1,0": {"parent": [0, 0], "action": "DOWN", "arrow": "\u2193"}, "0,2": {"parent": [0, 1], "action": "RIGHT", "arrow": "\u2192"}, "2,0": {"parent": [1, 0], "action": "DOWN", "arrow": "\u2193"}, "0,3": {"parent": [0, 2], "action": "RIGHT", "arrow": "\u2192"}, "2,1": {"parent": [2, 0], "action": "RIGHT", "arrow": "\u2192"}, "3,0": {"parent": [2, 0], "action": "DOWN", "arrow": "\u2193"}, "0,4": {"parent": [0, 3], "action": "RIGHT", "arrow": "\u2192"}, "3,1": {"parent": [2, 1], "action": "DOWN", "arrow": "\u2193"}, "1,4": {"parent": [0, 4], "action": "DOWN", "arrow": "\u2193"}, "4,1": {"parent": [3, 1], "action": "DOWN", "arrow": "\u2193"}, "2,4": {"parent": [1, 4], "action": "DOWN", "arrow": "\u2193"}, "4,2": {"parent": [4, 1], "action": "RIGHT", "arrow": "\u2192"}, "4,3": {"parent": [4, 2], "action": "RIGHT", "arrow": "\u2192"}, "4,4": {"parent": [4, 3], "action": "RIGHT", "arrow": "\u2192"}, "4,5": {"parent": [4, 4], "action": "RIGHT", "arrow": "\u2192"}, "5,5": {"parent": [4, 5], "action": "DOWN", "arrow": "\u2193"}}, "activeArrow": null, "recentSticky": null, "rejectedAttempt": null, "pathSoFar": [[5, 5]], "pathFlipped": false, "walkerCell": null, "highlightedTableRow": "5,5", "level": 10}, {"sceneId": 5, "sceneName": "Trace Back", "sceneTitle": "5. Trace Back", "narration": "Marker hops to parent: lookup table says parent[(5,5)] = (4,5). Green path grows!", "aiConcept": "Backpointer Traversal (Reverse Lookup)", "explanation": "Following the 'came from' sticky note at (5,5) leads directly to (4,5).", "currentCell": [5, 5], "queue": [], "explored": [[0, 0], [0, 1], [1, 0], [0, 2], [2, 0], [0, 3], [2, 1], [3, 0], [0, 4], [3, 1], [1, 4], [4, 1], [2, 4], [4, 2], [4, 3], [4, 4], [4, 5], [5, 5]], "parentMap": {"0,1": {"parent": [0, 0], "action": "RIGHT", "arrow": "\u2192"}, "1,0": {"parent": [0, 0], "action": "DOWN", "arrow": "\u2193"}, "0,2": {"parent": [0, 1], "action": "RIGHT", "arrow": "\u2192"}, "2,0": {"parent": [1, 0], "action": "DOWN", "arrow": "\u2193"}, "0,3": {"parent": [0, 2], "action": "RIGHT", "arrow": "\u2192"}, "2,1": {"parent": [2, 0], "action": "RIGHT", "arrow": "\u2192"}, "3,0": {"parent": [2, 0], "action": "DOWN", "arrow": "\u2193"}, "0,4": {"parent": [0, 3], "action": "RIGHT", "arrow": "\u2192"}, "3,1": {"parent": [2, 1], "action": "DOWN", "arrow": "\u2193"}, "1,4": {"parent": [0, 4], "action": "DOWN", "arrow": "\u2193"}, "4,1": {"parent": [3, 1], "action": "DOWN", "arrow": "\u2193"}, "2,4": {"parent": [1, 4], "action": "DOWN", "arrow": "\u2193"}, "4,2": {"parent": [4, 1], "action": "RIGHT", "arrow": "\u2192"}, "4,3": {"parent": [4, 2], "action": "RIGHT", "arrow": "\u2192"}, "4,4": {"parent": [4, 3], "action": "RIGHT", "arrow": "\u2192"}, "4,5": {"parent": [4, 4], "action": "RIGHT", "arrow": "\u2192"}, "5,5": {"parent": [4, 5], "action": "DOWN", "arrow": "\u2193"}}, "activeArrow": null, "recentSticky": null, "rejectedAttempt": null, "pathSoFar": [[5, 5]], "pathFlipped": false, "walkerCell": null, "highlightedTableRow": "5,5", "level": 10}, {"sceneId": 5, "sceneName": "Trace Back", "sceneTitle": "5. Trace Back", "narration": "Marker hops to parent: lookup table says parent[(4,5)] = (4,4). Green path grows!", "aiConcept": "Backpointer Traversal (Reverse Lookup)", "explanation": "Following the 'came from' sticky note at (4,5) leads directly to (4,4).", "currentCell": [4, 5], "queue": [], "explored": [[0, 0], [0, 1], [1, 0], [0, 2], [2, 0], [0, 3], [2, 1], [3, 0], [0, 4], [3, 1], [1, 4], [4, 1], [2, 4], [4, 2], [4, 3], [4, 4], [4, 5], [5, 5]], "parentMap": {"0,1": {"parent": [0, 0], "action": "RIGHT", "arrow": "\u2192"}, "1,0": {"parent": [0, 0], "action": "DOWN", "arrow": "\u2193"}, "0,2": {"parent": [0, 1], "action": "RIGHT", "arrow": "\u2192"}, "2,0": {"parent": [1, 0], "action": "DOWN", "arrow": "\u2193"}, "0,3": {"parent": [0, 2], "action": "RIGHT", "arrow": "\u2192"}, "2,1": {"parent": [2, 0], "action": "RIGHT", "arrow": "\u2192"}, "3,0": {"parent": [2, 0], "action": "DOWN", "arrow": "\u2193"}, "0,4": {"parent": [0, 3], "action": "RIGHT", "arrow": "\u2192"}, "3,1": {"parent": [2, 1], "action": "DOWN", "arrow": "\u2193"}, "1,4": {"parent": [0, 4], "action": "DOWN", "arrow": "\u2193"}, "4,1": {"parent": [3, 1], "action": "DOWN", "arrow": "\u2193"}, "2,4": {"parent": [1, 4], "action": "DOWN", "arrow": "\u2193"}, "4,2": {"parent": [4, 1], "action": "RIGHT", "arrow": "\u2192"}, "4,3": {"parent": [4, 2], "action": "RIGHT", "arrow": "\u2192"}, "4,4": {"parent": [4, 3], "action": "RIGHT", "arrow": "\u2192"}, "4,5": {"parent": [4, 4], "action": "RIGHT", "arrow": "\u2192"}, "5,5": {"parent": [4, 5], "action": "DOWN", "arrow": "\u2193"}}, "activeArrow": null, "recentSticky": null, "rejectedAttempt": null, "pathSoFar": [[5, 5], [4, 5]], "pathFlipped": false, "walkerCell": null, "highlightedTableRow": "4,5", "level": 9}, {"sceneId": 5, "sceneName": "Trace Back", "sceneTitle": "5. Trace Back", "narration": "Marker hops to parent: lookup table says parent[(4,4)] = (4,3). Green path grows!", "aiConcept": "Backpointer Traversal (Reverse Lookup)", "explanation": "Following the 'came from' sticky note at (4,4) leads directly to (4,3).", "currentCell": [4, 4], "queue": [], "explored": [[0, 0], [0, 1], [1, 0], [0, 2], [2, 0], [0, 3], [2, 1], [3, 0], [0, 4], [3, 1], [1, 4], [4, 1], [2, 4], [4, 2], [4, 3], [4, 4], [4, 5], [5, 5]], "parentMap": {"0,1": {"parent": [0, 0], "action": "RIGHT", "arrow": "\u2192"}, "1,0": {"parent": [0, 0], "action": "DOWN", "arrow": "\u2193"}, "0,2": {"parent": [0, 1], "action": "RIGHT", "arrow": "\u2192"}, "2,0": {"parent": [1, 0], "action": "DOWN", "arrow": "\u2193"}, "0,3": {"parent": [0, 2], "action": "RIGHT", "arrow": "\u2192"}, "2,1": {"parent": [2, 0], "action": "RIGHT", "arrow": "\u2192"}, "3,0": {"parent": [2, 0], "action": "DOWN", "arrow": "\u2193"}, "0,4": {"parent": [0, 3], "action": "RIGHT", "arrow": "\u2192"}, "3,1": {"parent": [2, 1], "action": "DOWN", "arrow": "\u2193"}, "1,4": {"parent": [0, 4], "action": "DOWN", "arrow": "\u2193"}, "4,1": {"parent": [3, 1], "action": "DOWN", "arrow": "\u2193"}, "2,4": {"parent": [1, 4], "action": "DOWN", "arrow": "\u2193"}, "4,2": {"parent": [4, 1], "action": "RIGHT", "arrow": "\u2192"}, "4,3": {"parent": [4, 2], "action": "RIGHT", "arrow": "\u2192"}, "4,4": {"parent": [4, 3], "action": "RIGHT", "arrow": "\u2192"}, "4,5": {"parent": [4, 4], "action": "RIGHT", "arrow": "\u2192"}, "5,5": {"parent": [4, 5], "action": "DOWN", "arrow": "\u2193"}}, "activeArrow": null, "recentSticky": null, "rejectedAttempt": null, "pathSoFar": [[5, 5], [4, 5], [4, 4]], "pathFlipped": false, "walkerCell": null, "highlightedTableRow": "4,4", "level": 8}, {"sceneId": 5, "sceneName": "Trace Back", "sceneTitle": "5. Trace Back", "narration": "Marker hops to parent: lookup table says parent[(4,3)] = (4,2). Green path grows!", "aiConcept": "Backpointer Traversal (Reverse Lookup)", "explanation": "Following the 'came from' sticky note at (4,3) leads directly to (4,2).", "currentCell": [4, 3], "queue": [], "explored": [[0, 0], [0, 1], [1, 0], [0, 2], [2, 0], [0, 3], [2, 1], [3, 0], [0, 4], [3, 1], [1, 4], [4, 1], [2, 4], [4, 2], [4, 3], [4, 4], [4, 5], [5, 5]], "parentMap": {"0,1": {"parent": [0, 0], "action": "RIGHT", "arrow": "\u2192"}, "1,0": {"parent": [0, 0], "action": "DOWN", "arrow": "\u2193"}, "0,2": {"parent": [0, 1], "action": "RIGHT", "arrow": "\u2192"}, "2,0": {"parent": [1, 0], "action": "DOWN", "arrow": "\u2193"}, "0,3": {"parent": [0, 2], "action": "RIGHT", "arrow": "\u2192"}, "2,1": {"parent": [2, 0], "action": "RIGHT", "arrow": "\u2192"}, "3,0": {"parent": [2, 0], "action": "DOWN", "arrow": "\u2193"}, "0,4": {"parent": [0, 3], "action": "RIGHT", "arrow": "\u2192"}, "3,1": {"parent": [2, 1], "action": "DOWN", "arrow": "\u2193"}, "1,4": {"parent": [0, 4], "action": "DOWN", "arrow": "\u2193"}, "4,1": {"parent": [3, 1], "action": "DOWN", "arrow": "\u2193"}, "2,4": {"parent": [1, 4], "action": "DOWN", "arrow": "\u2193"}, "4,2": {"parent": [4, 1], "action": "RIGHT", "arrow": "\u2192"}, "4,3": {"parent": [4, 2], "action": "RIGHT", "arrow": "\u2192"}, "4,4": {"parent": [4, 3], "action": "RIGHT", "arrow": "\u2192"}, "4,5": {"parent": [4, 4], "action": "RIGHT", "arrow": "\u2192"}, "5,5": {"parent": [4, 5], "action": "DOWN", "arrow": "\u2193"}}, "activeArrow": null, "recentSticky": null, "rejectedAttempt": null, "pathSoFar": [[5, 5], [4, 5], [4, 4], [4, 3]], "pathFlipped": false, "walkerCell": null, "highlightedTableRow": "4,3", "level": 7}, {"sceneId": 5, "sceneName": "Trace Back", "sceneTitle": "5. Trace Back", "narration": "Marker hops to parent: lookup table says parent[(4,2)] = (4,1). Green path grows!", "aiConcept": "Backpointer Traversal (Reverse Lookup)", "explanation": "Following the 'came from' sticky note at (4,2) leads directly to (4,1).", "currentCell": [4, 2], "queue": [], "explored": [[0, 0], [0, 1], [1, 0], [0, 2], [2, 0], [0, 3], [2, 1], [3, 0], [0, 4], [3, 1], [1, 4], [4, 1], [2, 4], [4, 2], [4, 3], [4, 4], [4, 5], [5, 5]], "parentMap": {"0,1": {"parent": [0, 0], "action": "RIGHT", "arrow": "\u2192"}, "1,0": {"parent": [0, 0], "action": "DOWN", "arrow": "\u2193"}, "0,2": {"parent": [0, 1], "action": "RIGHT", "arrow": "\u2192"}, "2,0": {"parent": [1, 0], "action": "DOWN", "arrow": "\u2193"}, "0,3": {"parent": [0, 2], "action": "RIGHT", "arrow": "\u2192"}, "2,1": {"parent": [2, 0], "action": "RIGHT", "arrow": "\u2192"}, "3,0": {"parent": [2, 0], "action": "DOWN", "arrow": "\u2193"}, "0,4": {"parent": [0, 3], "action": "RIGHT", "arrow": "\u2192"}, "3,1": {"parent": [2, 1], "action": "DOWN", "arrow": "\u2193"}, "1,4": {"parent": [0, 4], "action": "DOWN", "arrow": "\u2193"}, "4,1": {"parent": [3, 1], "action": "DOWN", "arrow": "\u2193"}, "2,4": {"parent": [1, 4], "action": "DOWN", "arrow": "\u2193"}, "4,2": {"parent": [4, 1], "action": "RIGHT", "arrow": "\u2192"}, "4,3": {"parent": [4, 2], "action": "RIGHT", "arrow": "\u2192"}, "4,4": {"parent": [4, 3], "action": "RIGHT", "arrow": "\u2192"}, "4,5": {"parent": [4, 4], "action": "RIGHT", "arrow": "\u2192"}, "5,5": {"parent": [4, 5], "action": "DOWN", "arrow": "\u2193"}}, "activeArrow": null, "recentSticky": null, "rejectedAttempt": null, "pathSoFar": [[5, 5], [4, 5], [4, 4], [4, 3], [4, 2]], "pathFlipped": false, "walkerCell": null, "highlightedTableRow": "4,2", "level": 6}, {"sceneId": 5, "sceneName": "Trace Back", "sceneTitle": "5. Trace Back", "narration": "Marker hops to parent: lookup table says parent[(4,1)] = (3,1). Green path grows!", "aiConcept": "Backpointer Traversal (Reverse Lookup)", "explanation": "Following the 'came from' sticky note at (4,1) leads directly to (3,1).", "currentCell": [4, 1], "queue": [], "explored": [[0, 0], [0, 1], [1, 0], [0, 2], [2, 0], [0, 3], [2, 1], [3, 0], [0, 4], [3, 1], [1, 4], [4, 1], [2, 4], [4, 2], [4, 3], [4, 4], [4, 5], [5, 5]], "parentMap": {"0,1": {"parent": [0, 0], "action": "RIGHT", "arrow": "\u2192"}, "1,0": {"parent": [0, 0], "action": "DOWN", "arrow": "\u2193"}, "0,2": {"parent": [0, 1], "action": "RIGHT", "arrow": "\u2192"}, "2,0": {"parent": [1, 0], "action": "DOWN", "arrow": "\u2193"}, "0,3": {"parent": [0, 2], "action": "RIGHT", "arrow": "\u2192"}, "2,1": {"parent": [2, 0], "action": "RIGHT", "arrow": "\u2192"}, "3,0": {"parent": [2, 0], "action": "DOWN", "arrow": "\u2193"}, "0,4": {"parent": [0, 3], "action": "RIGHT", "arrow": "\u2192"}, "3,1": {"parent": [2, 1], "action": "DOWN", "arrow": "\u2193"}, "1,4": {"parent": [0, 4], "action": "DOWN", "arrow": "\u2193"}, "4,1": {"parent": [3, 1], "action": "DOWN", "arrow": "\u2193"}, "2,4": {"parent": [1, 4], "action": "DOWN", "arrow": "\u2193"}, "4,2": {"parent": [4, 1], "action": "RIGHT", "arrow": "\u2192"}, "4,3": {"parent": [4, 2], "action": "RIGHT", "arrow": "\u2192"}, "4,4": {"parent": [4, 3], "action": "RIGHT", "arrow": "\u2192"}, "4,5": {"parent": [4, 4], "action": "RIGHT", "arrow": "\u2192"}, "5,5": {"parent": [4, 5], "action": "DOWN", "arrow": "\u2193"}}, "activeArrow": null, "recentSticky": null, "rejectedAttempt": null, "pathSoFar": [[5, 5], [4, 5], [4, 4], [4, 3], [4, 2], [4, 1]], "pathFlipped": false, "walkerCell": null, "highlightedTableRow": "4,1", "level": 5}, {"sceneId": 5, "sceneName": "Trace Back", "sceneTitle": "5. Trace Back", "narration": "Marker hops to parent: lookup table says parent[(3,1)] = (2,1). Green path grows!", "aiConcept": "Backpointer Traversal (Reverse Lookup)", "explanation": "Following the 'came from' sticky note at (3,1) leads directly to (2,1).", "currentCell": [3, 1], "queue": [], "explored": [[0, 0], [0, 1], [1, 0], [0, 2], [2, 0], [0, 3], [2, 1], [3, 0], [0, 4], [3, 1], [1, 4], [4, 1], [2, 4], [4, 2], [4, 3], [4, 4], [4, 5], [5, 5]], "parentMap": {"0,1": {"parent": [0, 0], "action": "RIGHT", "arrow": "\u2192"}, "1,0": {"parent": [0, 0], "action": "DOWN", "arrow": "\u2193"}, "0,2": {"parent": [0, 1], "action": "RIGHT", "arrow": "\u2192"}, "2,0": {"parent": [1, 0], "action": "DOWN", "arrow": "\u2193"}, "0,3": {"parent": [0, 2], "action": "RIGHT", "arrow": "\u2192"}, "2,1": {"parent": [2, 0], "action": "RIGHT", "arrow": "\u2192"}, "3,0": {"parent": [2, 0], "action": "DOWN", "arrow": "\u2193"}, "0,4": {"parent": [0, 3], "action": "RIGHT", "arrow": "\u2192"}, "3,1": {"parent": [2, 1], "action": "DOWN", "arrow": "\u2193"}, "1,4": {"parent": [0, 4], "action": "DOWN", "arrow": "\u2193"}, "4,1": {"parent": [3, 1], "action": "DOWN", "arrow": "\u2193"}, "2,4": {"parent": [1, 4], "action": "DOWN", "arrow": "\u2193"}, "4,2": {"parent": [4, 1], "action": "RIGHT", "arrow": "\u2192"}, "4,3": {"parent": [4, 2], "action": "RIGHT", "arrow": "\u2192"}, "4,4": {"parent": [4, 3], "action": "RIGHT", "arrow": "\u2192"}, "4,5": {"parent": [4, 4], "action": "RIGHT", "arrow": "\u2192"}, "5,5": {"parent": [4, 5], "action": "DOWN", "arrow": "\u2193"}}, "activeArrow": null, "recentSticky": null, "rejectedAttempt": null, "pathSoFar": [[5, 5], [4, 5], [4, 4], [4, 3], [4, 2], [4, 1], [3, 1]], "pathFlipped": false, "walkerCell": null, "highlightedTableRow": "3,1", "level": 4}, {"sceneId": 5, "sceneName": "Trace Back", "sceneTitle": "5. Trace Back", "narration": "Marker hops to parent: lookup table says parent[(2,1)] = (2,0). Green path grows!", "aiConcept": "Backpointer Traversal (Reverse Lookup)", "explanation": "Following the 'came from' sticky note at (2,1) leads directly to (2,0).", "currentCell": [2, 1], "queue": [], "explored": [[0, 0], [0, 1], [1, 0], [0, 2], [2, 0], [0, 3], [2, 1], [3, 0], [0, 4], [3, 1], [1, 4], [4, 1], [2, 4], [4, 2], [4, 3], [4, 4], [4, 5], [5, 5]], "parentMap": {"0,1": {"parent": [0, 0], "action": "RIGHT", "arrow": "\u2192"}, "1,0": {"parent": [0, 0], "action": "DOWN", "arrow": "\u2193"}, "0,2": {"parent": [0, 1], "action": "RIGHT", "arrow": "\u2192"}, "2,0": {"parent": [1, 0], "action": "DOWN", "arrow": "\u2193"}, "0,3": {"parent": [0, 2], "action": "RIGHT", "arrow": "\u2192"}, "2,1": {"parent": [2, 0], "action": "RIGHT", "arrow": "\u2192"}, "3,0": {"parent": [2, 0], "action": "DOWN", "arrow": "\u2193"}, "0,4": {"parent": [0, 3], "action": "RIGHT", "arrow": "\u2192"}, "3,1": {"parent": [2, 1], "action": "DOWN", "arrow": "\u2193"}, "1,4": {"parent": [0, 4], "action": "DOWN", "arrow": "\u2193"}, "4,1": {"parent": [3, 1], "action": "DOWN", "arrow": "\u2193"}, "2,4": {"parent": [1, 4], "action": "DOWN", "arrow": "\u2193"}, "4,2": {"parent": [4, 1], "action": "RIGHT", "arrow": "\u2192"}, "4,3": {"parent": [4, 2], "action": "RIGHT", "arrow": "\u2192"}, "4,4": {"parent": [4, 3], "action": "RIGHT", "arrow": "\u2192"}, "4,5": {"parent": [4, 4], "action": "RIGHT", "arrow": "\u2192"}, "5,5": {"parent": [4, 5], "action": "DOWN", "arrow": "\u2193"}}, "activeArrow": null, "recentSticky": null, "rejectedAttempt": null, "pathSoFar": [[5, 5], [4, 5], [4, 4], [4, 3], [4, 2], [4, 1], [3, 1], [2, 1]], "pathFlipped": false, "walkerCell": null, "highlightedTableRow": "2,1", "level": 3}, {"sceneId": 5, "sceneName": "Trace Back", "sceneTitle": "5. Trace Back", "narration": "Marker hops to parent: lookup table says parent[(2,0)] = (1,0). Green path grows!", "aiConcept": "Backpointer Traversal (Reverse Lookup)", "explanation": "Following the 'came from' sticky note at (2,0) leads directly to (1,0).", "currentCell": [2, 0], "queue": [], "explored": [[0, 0], [0, 1], [1, 0], [0, 2], [2, 0], [0, 3], [2, 1], [3, 0], [0, 4], [3, 1], [1, 4], [4, 1], [2, 4], [4, 2], [4, 3], [4, 4], [4, 5], [5, 5]], "parentMap": {"0,1": {"parent": [0, 0], "action": "RIGHT", "arrow": "\u2192"}, "1,0": {"parent": [0, 0], "action": "DOWN", "arrow": "\u2193"}, "0,2": {"parent": [0, 1], "action": "RIGHT", "arrow": "\u2192"}, "2,0": {"parent": [1, 0], "action": "DOWN", "arrow": "\u2193"}, "0,3": {"parent": [0, 2], "action": "RIGHT", "arrow": "\u2192"}, "2,1": {"parent": [2, 0], "action": "RIGHT", "arrow": "\u2192"}, "3,0": {"parent": [2, 0], "action": "DOWN", "arrow": "\u2193"}, "0,4": {"parent": [0, 3], "action": "RIGHT", "arrow": "\u2192"}, "3,1": {"parent": [2, 1], "action": "DOWN", "arrow": "\u2193"}, "1,4": {"parent": [0, 4], "action": "DOWN", "arrow": "\u2193"}, "4,1": {"parent": [3, 1], "action": "DOWN", "arrow": "\u2193"}, "2,4": {"parent": [1, 4], "action": "DOWN", "arrow": "\u2193"}, "4,2": {"parent": [4, 1], "action": "RIGHT", "arrow": "\u2192"}, "4,3": {"parent": [4, 2], "action": "RIGHT", "arrow": "\u2192"}, "4,4": {"parent": [4, 3], "action": "RIGHT", "arrow": "\u2192"}, "4,5": {"parent": [4, 4], "action": "RIGHT", "arrow": "\u2192"}, "5,5": {"parent": [4, 5], "action": "DOWN", "arrow": "\u2193"}}, "activeArrow": null, "recentSticky": null, "rejectedAttempt": null, "pathSoFar": [[5, 5], [4, 5], [4, 4], [4, 3], [4, 2], [4, 1], [3, 1], [2, 1], [2, 0]], "pathFlipped": false, "walkerCell": null, "highlightedTableRow": "2,0", "level": 2}, {"sceneId": 5, "sceneName": "Trace Back", "sceneTitle": "5. Trace Back", "narration": "Marker hops to parent: lookup table says parent[(1,0)] = (0,0). Green path grows!", "aiConcept": "Backpointer Traversal (Reverse Lookup)", "explanation": "Following the 'came from' sticky note at (1,0) leads directly to (0,0).", "currentCell": [1, 0], "queue": [], "explored": [[0, 0], [0, 1], [1, 0], [0, 2], [2, 0], [0, 3], [2, 1], [3, 0], [0, 4], [3, 1], [1, 4], [4, 1], [2, 4], [4, 2], [4, 3], [4, 4], [4, 5], [5, 5]], "parentMap": {"0,1": {"parent": [0, 0], "action": "RIGHT", "arrow": "\u2192"}, "1,0": {"parent": [0, 0], "action": "DOWN", "arrow": "\u2193"}, "0,2": {"parent": [0, 1], "action": "RIGHT", "arrow": "\u2192"}, "2,0": {"parent": [1, 0], "action": "DOWN", "arrow": "\u2193"}, "0,3": {"parent": [0, 2], "action": "RIGHT", "arrow": "\u2192"}, "2,1": {"parent": [2, 0], "action": "RIGHT", "arrow": "\u2192"}, "3,0": {"parent": [2, 0], "action": "DOWN", "arrow": "\u2193"}, "0,4": {"parent": [0, 3], "action": "RIGHT", "arrow": "\u2192"}, "3,1": {"parent": [2, 1], "action": "DOWN", "arrow": "\u2193"}, "1,4": {"parent": [0, 4], "action": "DOWN", "arrow": "\u2193"}, "4,1": {"parent": [3, 1], "action": "DOWN", "arrow": "\u2193"}, "2,4": {"parent": [1, 4], "action": "DOWN", "arrow": "\u2193"}, "4,2": {"parent": [4, 1], "action": "RIGHT", "arrow": "\u2192"}, "4,3": {"parent": [4, 2], "action": "RIGHT", "arrow": "\u2192"}, "4,4": {"parent": [4, 3], "action": "RIGHT", "arrow": "\u2192"}, "4,5": {"parent": [4, 4], "action": "RIGHT", "arrow": "\u2192"}, "5,5": {"parent": [4, 5], "action": "DOWN", "arrow": "\u2193"}}, "activeArrow": null, "recentSticky": null, "rejectedAttempt": null, "pathSoFar": [[5, 5], [4, 5], [4, 4], [4, 3], [4, 2], [4, 1], [3, 1], [2, 1], [2, 0], [1, 0]], "pathFlipped": false, "walkerCell": null, "highlightedTableRow": "1,0", "level": 1}, {"sceneId": 5, "sceneName": "Trace Back", "sceneTitle": "5. Trace Back", "narration": "Reached Start S (0,0)! The backwards chain of parents forms our complete route home.", "aiConcept": "Path Recovery Complete (Backward)", "explanation": "We followed the chain of parents all the way to the root (Start). Now we have the complete path, but it's currently listed in reverse order (G to S).", "currentCell": [0, 0], "queue": [], "explored": [[0, 0], [0, 1], [1, 0], [0, 2], [2, 0], [0, 3], [2, 1], [3, 0], [0, 4], [3, 1], [1, 4], [4, 1], [2, 4], [4, 2], [4, 3], [4, 4], [4, 5], [5, 5]], "parentMap": {"0,1": {"parent": [0, 0], "action": "RIGHT", "arrow": "\u2192"}, "1,0": {"parent": [0, 0], "action": "DOWN", "arrow": "\u2193"}, "0,2": {"parent": [0, 1], "action": "RIGHT", "arrow": "\u2192"}, "2,0": {"parent": [1, 0], "action": "DOWN", "arrow": "\u2193"}, "0,3": {"parent": [0, 2], "action": "RIGHT", "arrow": "\u2192"}, "2,1": {"parent": [2, 0], "action": "RIGHT", "arrow": "\u2192"}, "3,0": {"parent": [2, 0], "action": "DOWN", "arrow": "\u2193"}, "0,4": {"parent": [0, 3], "action": "RIGHT", "arrow": "\u2192"}, "3,1": {"parent": [2, 1], "action": "DOWN", "arrow": "\u2193"}, "1,4": {"parent": [0, 4], "action": "DOWN", "arrow": "\u2193"}, "4,1": {"parent": [3, 1], "action": "DOWN", "arrow": "\u2193"}, "2,4": {"parent": [1, 4], "action": "DOWN", "arrow": "\u2193"}, "4,2": {"parent": [4, 1], "action": "RIGHT", "arrow": "\u2192"}, "4,3": {"parent": [4, 2], "action": "RIGHT", "arrow": "\u2192"}, "4,4": {"parent": [4, 3], "action": "RIGHT", "arrow": "\u2192"}, "4,5": {"parent": [4, 4], "action": "RIGHT", "arrow": "\u2192"}, "5,5": {"parent": [4, 5], "action": "DOWN", "arrow": "\u2193"}}, "activeArrow": null, "recentSticky": null, "rejectedAttempt": null, "pathSoFar": [[5, 5], [4, 5], [4, 4], [4, 3], [4, 2], [4, 1], [3, 1], [2, 1], [2, 0], [1, 0], [0, 0]], "pathFlipped": false, "walkerCell": null, "highlightedTableRow": null, "level": 0}, {"sceneId": 6, "sceneName": "Flip & Walk", "sceneTitle": "6. Flip & Walk", "narration": "Flip it! Reversing the list [G to S] produces the forward route [S to G]. Path length: 10 moves.", "aiConcept": "Path Inversion: Constructing the Action Plan", "explanation": "By reversing the list of parent pointers, the agent gets the forward sequence of actions from Start to Goal.", "currentCell": [0, 0], "queue": [], "explored": [[0, 0], [0, 1], [1, 0], [0, 2], [2, 0], [0, 3], [2, 1], [3, 0], [0, 4], [3, 1], [1, 4], [4, 1], [2, 4], [4, 2], [4, 3], [4, 4], [4, 5], [5, 5]], "parentMap": {"0,1": {"parent": [0, 0], "action": "RIGHT", "arrow": "\u2192"}, "1,0": {"parent": [0, 0], "action": "DOWN", "arrow": "\u2193"}, "0,2": {"parent": [0, 1], "action": "RIGHT", "arrow": "\u2192"}, "2,0": {"parent": [1, 0], "action": "DOWN", "arrow": "\u2193"}, "0,3": {"parent": [0, 2], "action": "RIGHT", "arrow": "\u2192"}, "2,1": {"parent": [2, 0], "action": "RIGHT", "arrow": "\u2192"}, "3,0": {"parent": [2, 0], "action": "DOWN", "arrow": "\u2193"}, "0,4": {"parent": [0, 3], "action": "RIGHT", "arrow": "\u2192"}, "3,1": {"parent": [2, 1], "action": "DOWN", "arrow": "\u2193"}, "1,4": {"parent": [0, 4], "action": "DOWN", "arrow": "\u2193"}, "4,1": {"parent": [3, 1], "action": "DOWN", "arrow": "\u2193"}, "2,4": {"parent": [1, 4], "action": "DOWN", "arrow": "\u2193"}, "4,2": {"parent": [4, 1], "action": "RIGHT", "arrow": "\u2192"}, "4,3": {"parent": [4, 2], "action": "RIGHT", "arrow": "\u2192"}, "4,4": {"parent": [4, 3], "action": "RIGHT", "arrow": "\u2192"}, "4,5": {"parent": [4, 4], "action": "RIGHT", "arrow": "\u2192"}, "5,5": {"parent": [4, 5], "action": "DOWN", "arrow": "\u2193"}}, "activeArrow": null, "recentSticky": null, "rejectedAttempt": null, "pathSoFar": [[0, 0], [1, 0], [2, 0], [2, 1], [3, 1], [4, 1], [4, 2], [4, 3], [4, 4], [4, 5], [5, 5]], "pathFlipped": true, "walkerCell": [0, 0], "highlightedTableRow": null, "level": 0}, {"sceneId": 6, "sceneName": "Flip & Walk", "sceneTitle": "6. Flip & Walk", "narration": "Walker executes move 1 of 10: walking from (0,0) to (1,0).", "aiConcept": "Plan Execution", "explanation": "Following the planned actions in forward order navigates the maze without any hesitation or dead ends.", "currentCell": [1, 0], "queue": [], "explored": [[0, 0], [0, 1], [1, 0], [0, 2], [2, 0], [0, 3], [2, 1], [3, 0], [0, 4], [3, 1], [1, 4], [4, 1], [2, 4], [4, 2], [4, 3], [4, 4], [4, 5], [5, 5]], "parentMap": {"0,1": {"parent": [0, 0], "action": "RIGHT", "arrow": "\u2192"}, "1,0": {"parent": [0, 0], "action": "DOWN", "arrow": "\u2193"}, "0,2": {"parent": [0, 1], "action": "RIGHT", "arrow": "\u2192"}, "2,0": {"parent": [1, 0], "action": "DOWN", "arrow": "\u2193"}, "0,3": {"parent": [0, 2], "action": "RIGHT", "arrow": "\u2192"}, "2,1": {"parent": [2, 0], "action": "RIGHT", "arrow": "\u2192"}, "3,0": {"parent": [2, 0], "action": "DOWN", "arrow": "\u2193"}, "0,4": {"parent": [0, 3], "action": "RIGHT", "arrow": "\u2192"}, "3,1": {"parent": [2, 1], "action": "DOWN", "arrow": "\u2193"}, "1,4": {"parent": [0, 4], "action": "DOWN", "arrow": "\u2193"}, "4,1": {"parent": [3, 1], "action": "DOWN", "arrow": "\u2193"}, "2,4": {"parent": [1, 4], "action": "DOWN", "arrow": "\u2193"}, "4,2": {"parent": [4, 1], "action": "RIGHT", "arrow": "\u2192"}, "4,3": {"parent": [4, 2], "action": "RIGHT", "arrow": "\u2192"}, "4,4": {"parent": [4, 3], "action": "RIGHT", "arrow": "\u2192"}, "4,5": {"parent": [4, 4], "action": "RIGHT", "arrow": "\u2192"}, "5,5": {"parent": [4, 5], "action": "DOWN", "arrow": "\u2193"}}, "activeArrow": null, "recentSticky": null, "rejectedAttempt": null, "pathSoFar": [[0, 0], [1, 0], [2, 0], [2, 1], [3, 1], [4, 1], [4, 2], [4, 3], [4, 4], [4, 5], [5, 5]], "pathFlipped": true, "walkerCell": [1, 0], "highlightedTableRow": null, "level": 1}, {"sceneId": 6, "sceneName": "Flip & Walk", "sceneTitle": "6. Flip & Walk", "narration": "Walker executes move 2 of 10: walking from (1,0) to (2,0).", "aiConcept": "Plan Execution", "explanation": "Following the planned actions in forward order navigates the maze without any hesitation or dead ends.", "currentCell": [2, 0], "queue": [], "explored": [[0, 0], [0, 1], [1, 0], [0, 2], [2, 0], [0, 3], [2, 1], [3, 0], [0, 4], [3, 1], [1, 4], [4, 1], [2, 4], [4, 2], [4, 3], [4, 4], [4, 5], [5, 5]], "parentMap": {"0,1": {"parent": [0, 0], "action": "RIGHT", "arrow": "\u2192"}, "1,0": {"parent": [0, 0], "action": "DOWN", "arrow": "\u2193"}, "0,2": {"parent": [0, 1], "action": "RIGHT", "arrow": "\u2192"}, "2,0": {"parent": [1, 0], "action": "DOWN", "arrow": "\u2193"}, "0,3": {"parent": [0, 2], "action": "RIGHT", "arrow": "\u2192"}, "2,1": {"parent": [2, 0], "action": "RIGHT", "arrow": "\u2192"}, "3,0": {"parent": [2, 0], "action": "DOWN", "arrow": "\u2193"}, "0,4": {"parent": [0, 3], "action": "RIGHT", "arrow": "\u2192"}, "3,1": {"parent": [2, 1], "action": "DOWN", "arrow": "\u2193"}, "1,4": {"parent": [0, 4], "action": "DOWN", "arrow": "\u2193"}, "4,1": {"parent": [3, 1], "action": "DOWN", "arrow": "\u2193"}, "2,4": {"parent": [1, 4], "action": "DOWN", "arrow": "\u2193"}, "4,2": {"parent": [4, 1], "action": "RIGHT", "arrow": "\u2192"}, "4,3": {"parent": [4, 2], "action": "RIGHT", "arrow": "\u2192"}, "4,4": {"parent": [4, 3], "action": "RIGHT", "arrow": "\u2192"}, "4,5": {"parent": [4, 4], "action": "RIGHT", "arrow": "\u2192"}, "5,5": {"parent": [4, 5], "action": "DOWN", "arrow": "\u2193"}}, "activeArrow": null, "recentSticky": null, "rejectedAttempt": null, "pathSoFar": [[0, 0], [1, 0], [2, 0], [2, 1], [3, 1], [4, 1], [4, 2], [4, 3], [4, 4], [4, 5], [5, 5]], "pathFlipped": true, "walkerCell": [2, 0], "highlightedTableRow": null, "level": 2}, {"sceneId": 6, "sceneName": "Flip & Walk", "sceneTitle": "6. Flip & Walk", "narration": "Walker executes move 3 of 10: walking from (2,0) to (2,1).", "aiConcept": "Plan Execution", "explanation": "Following the planned actions in forward order navigates the maze without any hesitation or dead ends.", "currentCell": [2, 1], "queue": [], "explored": [[0, 0], [0, 1], [1, 0], [0, 2], [2, 0], [0, 3], [2, 1], [3, 0], [0, 4], [3, 1], [1, 4], [4, 1], [2, 4], [4, 2], [4, 3], [4, 4], [4, 5], [5, 5]], "parentMap": {"0,1": {"parent": [0, 0], "action": "RIGHT", "arrow": "\u2192"}, "1,0": {"parent": [0, 0], "action": "DOWN", "arrow": "\u2193"}, "0,2": {"parent": [0, 1], "action": "RIGHT", "arrow": "\u2192"}, "2,0": {"parent": [1, 0], "action": "DOWN", "arrow": "\u2193"}, "0,3": {"parent": [0, 2], "action": "RIGHT", "arrow": "\u2192"}, "2,1": {"parent": [2, 0], "action": "RIGHT", "arrow": "\u2192"}, "3,0": {"parent": [2, 0], "action": "DOWN", "arrow": "\u2193"}, "0,4": {"parent": [0, 3], "action": "RIGHT", "arrow": "\u2192"}, "3,1": {"parent": [2, 1], "action": "DOWN", "arrow": "\u2193"}, "1,4": {"parent": [0, 4], "action": "DOWN", "arrow": "\u2193"}, "4,1": {"parent": [3, 1], "action": "DOWN", "arrow": "\u2193"}, "2,4": {"parent": [1, 4], "action": "DOWN", "arrow": "\u2193"}, "4,2": {"parent": [4, 1], "action": "RIGHT", "arrow": "\u2192"}, "4,3": {"parent": [4, 2], "action": "RIGHT", "arrow": "\u2192"}, "4,4": {"parent": [4, 3], "action": "RIGHT", "arrow": "\u2192"}, "4,5": {"parent": [4, 4], "action": "RIGHT", "arrow": "\u2192"}, "5,5": {"parent": [4, 5], "action": "DOWN", "arrow": "\u2193"}}, "activeArrow": null, "recentSticky": null, "rejectedAttempt": null, "pathSoFar": [[0, 0], [1, 0], [2, 0], [2, 1], [3, 1], [4, 1], [4, 2], [4, 3], [4, 4], [4, 5], [5, 5]], "pathFlipped": true, "walkerCell": [2, 1], "highlightedTableRow": null, "level": 3}, {"sceneId": 6, "sceneName": "Flip & Walk", "sceneTitle": "6. Flip & Walk", "narration": "Walker executes move 4 of 10: walking from (2,1) to (3,1).", "aiConcept": "Plan Execution", "explanation": "Following the planned actions in forward order navigates the maze without any hesitation or dead ends.", "currentCell": [3, 1], "queue": [], "explored": [[0, 0], [0, 1], [1, 0], [0, 2], [2, 0], [0, 3], [2, 1], [3, 0], [0, 4], [3, 1], [1, 4], [4, 1], [2, 4], [4, 2], [4, 3], [4, 4], [4, 5], [5, 5]], "parentMap": {"0,1": {"parent": [0, 0], "action": "RIGHT", "arrow": "\u2192"}, "1,0": {"parent": [0, 0], "action": "DOWN", "arrow": "\u2193"}, "0,2": {"parent": [0, 1], "action": "RIGHT", "arrow": "\u2192"}, "2,0": {"parent": [1, 0], "action": "DOWN", "arrow": "\u2193"}, "0,3": {"parent": [0, 2], "action": "RIGHT", "arrow": "\u2192"}, "2,1": {"parent": [2, 0], "action": "RIGHT", "arrow": "\u2192"}, "3,0": {"parent": [2, 0], "action": "DOWN", "arrow": "\u2193"}, "0,4": {"parent": [0, 3], "action": "RIGHT", "arrow": "\u2192"}, "3,1": {"parent": [2, 1], "action": "DOWN", "arrow": "\u2193"}, "1,4": {"parent": [0, 4], "action": "DOWN", "arrow": "\u2193"}, "4,1": {"parent": [3, 1], "action": "DOWN", "arrow": "\u2193"}, "2,4": {"parent": [1, 4], "action": "DOWN", "arrow": "\u2193"}, "4,2": {"parent": [4, 1], "action": "RIGHT", "arrow": "\u2192"}, "4,3": {"parent": [4, 2], "action": "RIGHT", "arrow": "\u2192"}, "4,4": {"parent": [4, 3], "action": "RIGHT", "arrow": "\u2192"}, "4,5": {"parent": [4, 4], "action": "RIGHT", "arrow": "\u2192"}, "5,5": {"parent": [4, 5], "action": "DOWN", "arrow": "\u2193"}}, "activeArrow": null, "recentSticky": null, "rejectedAttempt": null, "pathSoFar": [[0, 0], [1, 0], [2, 0], [2, 1], [3, 1], [4, 1], [4, 2], [4, 3], [4, 4], [4, 5], [5, 5]], "pathFlipped": true, "walkerCell": [3, 1], "highlightedTableRow": null, "level": 4}, {"sceneId": 6, "sceneName": "Flip & Walk", "sceneTitle": "6. Flip & Walk", "narration": "Walker executes move 5 of 10: walking from (3,1) to (4,1).", "aiConcept": "Plan Execution", "explanation": "Following the planned actions in forward order navigates the maze without any hesitation or dead ends.", "currentCell": [4, 1], "queue": [], "explored": [[0, 0], [0, 1], [1, 0], [0, 2], [2, 0], [0, 3], [2, 1], [3, 0], [0, 4], [3, 1], [1, 4], [4, 1], [2, 4], [4, 2], [4, 3], [4, 4], [4, 5], [5, 5]], "parentMap": {"0,1": {"parent": [0, 0], "action": "RIGHT", "arrow": "\u2192"}, "1,0": {"parent": [0, 0], "action": "DOWN", "arrow": "\u2193"}, "0,2": {"parent": [0, 1], "action": "RIGHT", "arrow": "\u2192"}, "2,0": {"parent": [1, 0], "action": "DOWN", "arrow": "\u2193"}, "0,3": {"parent": [0, 2], "action": "RIGHT", "arrow": "\u2192"}, "2,1": {"parent": [2, 0], "action": "RIGHT", "arrow": "\u2192"}, "3,0": {"parent": [2, 0], "action": "DOWN", "arrow": "\u2193"}, "0,4": {"parent": [0, 3], "action": "RIGHT", "arrow": "\u2192"}, "3,1": {"parent": [2, 1], "action": "DOWN", "arrow": "\u2193"}, "1,4": {"parent": [0, 4], "action": "DOWN", "arrow": "\u2193"}, "4,1": {"parent": [3, 1], "action": "DOWN", "arrow": "\u2193"}, "2,4": {"parent": [1, 4], "action": "DOWN", "arrow": "\u2193"}, "4,2": {"parent": [4, 1], "action": "RIGHT", "arrow": "\u2192"}, "4,3": {"parent": [4, 2], "action": "RIGHT", "arrow": "\u2192"}, "4,4": {"parent": [4, 3], "action": "RIGHT", "arrow": "\u2192"}, "4,5": {"parent": [4, 4], "action": "RIGHT", "arrow": "\u2192"}, "5,5": {"parent": [4, 5], "action": "DOWN", "arrow": "\u2193"}}, "activeArrow": null, "recentSticky": null, "rejectedAttempt": null, "pathSoFar": [[0, 0], [1, 0], [2, 0], [2, 1], [3, 1], [4, 1], [4, 2], [4, 3], [4, 4], [4, 5], [5, 5]], "pathFlipped": true, "walkerCell": [4, 1], "highlightedTableRow": null, "level": 5}, {"sceneId": 6, "sceneName": "Flip & Walk", "sceneTitle": "6. Flip & Walk", "narration": "Walker executes move 6 of 10: walking from (4,1) to (4,2).", "aiConcept": "Plan Execution", "explanation": "Following the planned actions in forward order navigates the maze without any hesitation or dead ends.", "currentCell": [4, 2], "queue": [], "explored": [[0, 0], [0, 1], [1, 0], [0, 2], [2, 0], [0, 3], [2, 1], [3, 0], [0, 4], [3, 1], [1, 4], [4, 1], [2, 4], [4, 2], [4, 3], [4, 4], [4, 5], [5, 5]], "parentMap": {"0,1": {"parent": [0, 0], "action": "RIGHT", "arrow": "\u2192"}, "1,0": {"parent": [0, 0], "action": "DOWN", "arrow": "\u2193"}, "0,2": {"parent": [0, 1], "action": "RIGHT", "arrow": "\u2192"}, "2,0": {"parent": [1, 0], "action": "DOWN", "arrow": "\u2193"}, "0,3": {"parent": [0, 2], "action": "RIGHT", "arrow": "\u2192"}, "2,1": {"parent": [2, 0], "action": "RIGHT", "arrow": "\u2192"}, "3,0": {"parent": [2, 0], "action": "DOWN", "arrow": "\u2193"}, "0,4": {"parent": [0, 3], "action": "RIGHT", "arrow": "\u2192"}, "3,1": {"parent": [2, 1], "action": "DOWN", "arrow": "\u2193"}, "1,4": {"parent": [0, 4], "action": "DOWN", "arrow": "\u2193"}, "4,1": {"parent": [3, 1], "action": "DOWN", "arrow": "\u2193"}, "2,4": {"parent": [1, 4], "action": "DOWN", "arrow": "\u2193"}, "4,2": {"parent": [4, 1], "action": "RIGHT", "arrow": "\u2192"}, "4,3": {"parent": [4, 2], "action": "RIGHT", "arrow": "\u2192"}, "4,4": {"parent": [4, 3], "action": "RIGHT", "arrow": "\u2192"}, "4,5": {"parent": [4, 4], "action": "RIGHT", "arrow": "\u2192"}, "5,5": {"parent": [4, 5], "action": "DOWN", "arrow": "\u2193"}}, "activeArrow": null, "recentSticky": null, "rejectedAttempt": null, "pathSoFar": [[0, 0], [1, 0], [2, 0], [2, 1], [3, 1], [4, 1], [4, 2], [4, 3], [4, 4], [4, 5], [5, 5]], "pathFlipped": true, "walkerCell": [4, 2], "highlightedTableRow": null, "level": 6}, {"sceneId": 6, "sceneName": "Flip & Walk", "sceneTitle": "6. Flip & Walk", "narration": "Walker executes move 7 of 10: walking from (4,2) to (4,3).", "aiConcept": "Plan Execution", "explanation": "Following the planned actions in forward order navigates the maze without any hesitation or dead ends.", "currentCell": [4, 3], "queue": [], "explored": [[0, 0], [0, 1], [1, 0], [0, 2], [2, 0], [0, 3], [2, 1], [3, 0], [0, 4], [3, 1], [1, 4], [4, 1], [2, 4], [4, 2], [4, 3], [4, 4], [4, 5], [5, 5]], "parentMap": {"0,1": {"parent": [0, 0], "action": "RIGHT", "arrow": "\u2192"}, "1,0": {"parent": [0, 0], "action": "DOWN", "arrow": "\u2193"}, "0,2": {"parent": [0, 1], "action": "RIGHT", "arrow": "\u2192"}, "2,0": {"parent": [1, 0], "action": "DOWN", "arrow": "\u2193"}, "0,3": {"parent": [0, 2], "action": "RIGHT", "arrow": "\u2192"}, "2,1": {"parent": [2, 0], "action": "RIGHT", "arrow": "\u2192"}, "3,0": {"parent": [2, 0], "action": "DOWN", "arrow": "\u2193"}, "0,4": {"parent": [0, 3], "action": "RIGHT", "arrow": "\u2192"}, "3,1": {"parent": [2, 1], "action": "DOWN", "arrow": "\u2193"}, "1,4": {"parent": [0, 4], "action": "DOWN", "arrow": "\u2193"}, "4,1": {"parent": [3, 1], "action": "DOWN", "arrow": "\u2193"}, "2,4": {"parent": [1, 4], "action": "DOWN", "arrow": "\u2193"}, "4,2": {"parent": [4, 1], "action": "RIGHT", "arrow": "\u2192"}, "4,3": {"parent": [4, 2], "action": "RIGHT", "arrow": "\u2192"}, "4,4": {"parent": [4, 3], "action": "RIGHT", "arrow": "\u2192"}, "4,5": {"parent": [4, 4], "action": "RIGHT", "arrow": "\u2192"}, "5,5": {"parent": [4, 5], "action": "DOWN", "arrow": "\u2193"}}, "activeArrow": null, "recentSticky": null, "rejectedAttempt": null, "pathSoFar": [[0, 0], [1, 0], [2, 0], [2, 1], [3, 1], [4, 1], [4, 2], [4, 3], [4, 4], [4, 5], [5, 5]], "pathFlipped": true, "walkerCell": [4, 3], "highlightedTableRow": null, "level": 7}, {"sceneId": 6, "sceneName": "Flip & Walk", "sceneTitle": "6. Flip & Walk", "narration": "Walker executes move 8 of 10: walking from (4,3) to (4,4).", "aiConcept": "Plan Execution", "explanation": "Following the planned actions in forward order navigates the maze without any hesitation or dead ends.", "currentCell": [4, 4], "queue": [], "explored": [[0, 0], [0, 1], [1, 0], [0, 2], [2, 0], [0, 3], [2, 1], [3, 0], [0, 4], [3, 1], [1, 4], [4, 1], [2, 4], [4, 2], [4, 3], [4, 4], [4, 5], [5, 5]], "parentMap": {"0,1": {"parent": [0, 0], "action": "RIGHT", "arrow": "\u2192"}, "1,0": {"parent": [0, 0], "action": "DOWN", "arrow": "\u2193"}, "0,2": {"parent": [0, 1], "action": "RIGHT", "arrow": "\u2192"}, "2,0": {"parent": [1, 0], "action": "DOWN", "arrow": "\u2193"}, "0,3": {"parent": [0, 2], "action": "RIGHT", "arrow": "\u2192"}, "2,1": {"parent": [2, 0], "action": "RIGHT", "arrow": "\u2192"}, "3,0": {"parent": [2, 0], "action": "DOWN", "arrow": "\u2193"}, "0,4": {"parent": [0, 3], "action": "RIGHT", "arrow": "\u2192"}, "3,1": {"parent": [2, 1], "action": "DOWN", "arrow": "\u2193"}, "1,4": {"parent": [0, 4], "action": "DOWN", "arrow": "\u2193"}, "4,1": {"parent": [3, 1], "action": "DOWN", "arrow": "\u2193"}, "2,4": {"parent": [1, 4], "action": "DOWN", "arrow": "\u2193"}, "4,2": {"parent": [4, 1], "action": "RIGHT", "arrow": "\u2192"}, "4,3": {"parent": [4, 2], "action": "RIGHT", "arrow": "\u2192"}, "4,4": {"parent": [4, 3], "action": "RIGHT", "arrow": "\u2192"}, "4,5": {"parent": [4, 4], "action": "RIGHT", "arrow": "\u2192"}, "5,5": {"parent": [4, 5], "action": "DOWN", "arrow": "\u2193"}}, "activeArrow": null, "recentSticky": null, "rejectedAttempt": null, "pathSoFar": [[0, 0], [1, 0], [2, 0], [2, 1], [3, 1], [4, 1], [4, 2], [4, 3], [4, 4], [4, 5], [5, 5]], "pathFlipped": true, "walkerCell": [4, 4], "highlightedTableRow": null, "level": 8}, {"sceneId": 6, "sceneName": "Flip & Walk", "sceneTitle": "6. Flip & Walk", "narration": "Walker executes move 9 of 10: walking from (4,4) to (4,5).", "aiConcept": "Plan Execution", "explanation": "Following the planned actions in forward order navigates the maze without any hesitation or dead ends.", "currentCell": [4, 5], "queue": [], "explored": [[0, 0], [0, 1], [1, 0], [0, 2], [2, 0], [0, 3], [2, 1], [3, 0], [0, 4], [3, 1], [1, 4], [4, 1], [2, 4], [4, 2], [4, 3], [4, 4], [4, 5], [5, 5]], "parentMap": {"0,1": {"parent": [0, 0], "action": "RIGHT", "arrow": "\u2192"}, "1,0": {"parent": [0, 0], "action": "DOWN", "arrow": "\u2193"}, "0,2": {"parent": [0, 1], "action": "RIGHT", "arrow": "\u2192"}, "2,0": {"parent": [1, 0], "action": "DOWN", "arrow": "\u2193"}, "0,3": {"parent": [0, 2], "action": "RIGHT", "arrow": "\u2192"}, "2,1": {"parent": [2, 0], "action": "RIGHT", "arrow": "\u2192"}, "3,0": {"parent": [2, 0], "action": "DOWN", "arrow": "\u2193"}, "0,4": {"parent": [0, 3], "action": "RIGHT", "arrow": "\u2192"}, "3,1": {"parent": [2, 1], "action": "DOWN", "arrow": "\u2193"}, "1,4": {"parent": [0, 4], "action": "DOWN", "arrow": "\u2193"}, "4,1": {"parent": [3, 1], "action": "DOWN", "arrow": "\u2193"}, "2,4": {"parent": [1, 4], "action": "DOWN", "arrow": "\u2193"}, "4,2": {"parent": [4, 1], "action": "RIGHT", "arrow": "\u2192"}, "4,3": {"parent": [4, 2], "action": "RIGHT", "arrow": "\u2192"}, "4,4": {"parent": [4, 3], "action": "RIGHT", "arrow": "\u2192"}, "4,5": {"parent": [4, 4], "action": "RIGHT", "arrow": "\u2192"}, "5,5": {"parent": [4, 5], "action": "DOWN", "arrow": "\u2193"}}, "activeArrow": null, "recentSticky": null, "rejectedAttempt": null, "pathSoFar": [[0, 0], [1, 0], [2, 0], [2, 1], [3, 1], [4, 1], [4, 2], [4, 3], [4, 4], [4, 5], [5, 5]], "pathFlipped": true, "walkerCell": [4, 5], "highlightedTableRow": null, "level": 9}, {"sceneId": 6, "sceneName": "Flip & Walk", "sceneTitle": "6. Flip & Walk", "narration": "Walker executes move 10 of 10: walking from (4,5) to (5,5).", "aiConcept": "Plan Execution", "explanation": "Following the planned actions in forward order navigates the maze without any hesitation or dead ends.", "currentCell": [5, 5], "queue": [], "explored": [[0, 0], [0, 1], [1, 0], [0, 2], [2, 0], [0, 3], [2, 1], [3, 0], [0, 4], [3, 1], [1, 4], [4, 1], [2, 4], [4, 2], [4, 3], [4, 4], [4, 5], [5, 5]], "parentMap": {"0,1": {"parent": [0, 0], "action": "RIGHT", "arrow": "\u2192"}, "1,0": {"parent": [0, 0], "action": "DOWN", "arrow": "\u2193"}, "0,2": {"parent": [0, 1], "action": "RIGHT", "arrow": "\u2192"}, "2,0": {"parent": [1, 0], "action": "DOWN", "arrow": "\u2193"}, "0,3": {"parent": [0, 2], "action": "RIGHT", "arrow": "\u2192"}, "2,1": {"parent": [2, 0], "action": "RIGHT", "arrow": "\u2192"}, "3,0": {"parent": [2, 0], "action": "DOWN", "arrow": "\u2193"}, "0,4": {"parent": [0, 3], "action": "RIGHT", "arrow": "\u2192"}, "3,1": {"parent": [2, 1], "action": "DOWN", "arrow": "\u2193"}, "1,4": {"parent": [0, 4], "action": "DOWN", "arrow": "\u2193"}, "4,1": {"parent": [3, 1], "action": "DOWN", "arrow": "\u2193"}, "2,4": {"parent": [1, 4], "action": "DOWN", "arrow": "\u2193"}, "4,2": {"parent": [4, 1], "action": "RIGHT", "arrow": "\u2192"}, "4,3": {"parent": [4, 2], "action": "RIGHT", "arrow": "\u2192"}, "4,4": {"parent": [4, 3], "action": "RIGHT", "arrow": "\u2192"}, "4,5": {"parent": [4, 4], "action": "RIGHT", "arrow": "\u2192"}, "5,5": {"parent": [4, 5], "action": "DOWN", "arrow": "\u2193"}}, "activeArrow": null, "recentSticky": null, "rejectedAttempt": null, "pathSoFar": [[0, 0], [1, 0], [2, 0], [2, 1], [3, 1], [4, 1], [4, 2], [4, 3], [4, 4], [4, 5], [5, 5]], "pathFlipped": true, "walkerCell": [5, 5], "highlightedTableRow": null, "level": 10}, {"sceneId": 7, "sceneName": "Why It Works", "sceneTitle": "7. Why It Works", "narration": "1) First discovery wins: every cell has exactly one parent. 2) BFS spreads in layers, so this route has the fewest moves.", "aiConcept": "Optimality & Uniqueness Guarantee", "explanation": "Because BFS explores in order of uniform layer depth, the first backpointer written to each cell points along the shortest possible route from S.", "currentCell": [5, 5], "queue": [], "explored": [[0, 0], [0, 1], [1, 0], [0, 2], [2, 0], [0, 3], [2, 1], [3, 0], [0, 4], [3, 1], [1, 4], [4, 1], [2, 4], [4, 2], [4, 3], [4, 4], [4, 5], [5, 5]], "parentMap": {"0,1": {"parent": [0, 0], "action": "RIGHT", "arrow": "\u2192"}, "1,0": {"parent": [0, 0], "action": "DOWN", "arrow": "\u2193"}, "0,2": {"parent": [0, 1], "action": "RIGHT", "arrow": "\u2192"}, "2,0": {"parent": [1, 0], "action": "DOWN", "arrow": "\u2193"}, "0,3": {"parent": [0, 2], "action": "RIGHT", "arrow": "\u2192"}, "2,1": {"parent": [2, 0], "action": "RIGHT", "arrow": "\u2192"}, "3,0": {"parent": [2, 0], "action": "DOWN", "arrow": "\u2193"}, "0,4": {"parent": [0, 3], "action": "RIGHT", "arrow": "\u2192"}, "3,1": {"parent": [2, 1], "action": "DOWN", "arrow": "\u2193"}, "1,4": {"parent": [0, 4], "action": "DOWN", "arrow": "\u2193"}, "4,1": {"parent": [3, 1], "action": "DOWN", "arrow": "\u2193"}, "2,4": {"parent": [1, 4], "action": "DOWN", "arrow": "\u2193"}, "4,2": {"parent": [4, 1], "action": "RIGHT", "arrow": "\u2192"}, "4,3": {"parent": [4, 2], "action": "RIGHT", "arrow": "\u2192"}, "4,4": {"parent": [4, 3], "action": "RIGHT", "arrow": "\u2192"}, "4,5": {"parent": [4, 4], "action": "RIGHT", "arrow": "\u2192"}, "5,5": {"parent": [4, 5], "action": "DOWN", "arrow": "\u2193"}}, "activeArrow": null, "recentSticky": null, "rejectedAttempt": null, "pathSoFar": [[0, 0], [1, 0], [2, 0], [2, 1], [3, 1], [4, 1], [4, 2], [4, 3], [4, 4], [4, 5], [5, 5]], "pathFlipped": true, "walkerCell": [5, 5], "highlightedTableRow": null, "level": 10}, {"sceneId": 8, "sceneName": "Explore Mode", "sceneTitle": "8. Explore Mode", "narration": "Your turn! Click any explored cell in the maze to see its route traced back to Start (S).", "aiConcept": "Interactive Verification (Your Turn)", "explanation": "Every explored cell in the maze has a parent pointing back toward Start. Click any cell to test your intuition!", "currentCell": null, "queue": [], "explored": [[0, 0], [0, 1], [1, 0], [0, 2], [2, 0], [0, 3], [2, 1], [3, 0], [0, 4], [3, 1], [1, 4], [4, 1], [2, 4], [4, 2], [4, 3], [4, 4], [4, 5], [5, 5]], "parentMap": {"0,1": {"parent": [0, 0], "action": "RIGHT", "arrow": "\u2192"}, "1,0": {"parent": [0, 0], "action": "DOWN", "arrow": "\u2193"}, "0,2": {"parent": [0, 1], "action": "RIGHT", "arrow": "\u2192"}, "2,0": {"parent": [1, 0], "action": "DOWN", "arrow": "\u2193"}, "0,3": {"parent": [0, 2], "action": "RIGHT", "arrow": "\u2192"}, "2,1": {"parent": [2, 0], "action": "RIGHT", "arrow": "\u2192"}, "3,0": {"parent": [2, 0], "action": "DOWN", "arrow": "\u2193"}, "0,4": {"parent": [0, 3], "action": "RIGHT", "arrow": "\u2192"}, "3,1": {"parent": [2, 1], "action": "DOWN", "arrow": "\u2193"}, "1,4": {"parent": [0, 4], "action": "DOWN", "arrow": "\u2193"}, "4,1": {"parent": [3, 1], "action": "DOWN", "arrow": "\u2193"}, "2,4": {"parent": [1, 4], "action": "DOWN", "arrow": "\u2193"}, "4,2": {"parent": [4, 1], "action": "RIGHT", "arrow": "\u2192"}, "4,3": {"parent": [4, 2], "action": "RIGHT", "arrow": "\u2192"}, "4,4": {"parent": [4, 3], "action": "RIGHT", "arrow": "\u2192"}, "4,5": {"parent": [4, 4], "action": "RIGHT", "arrow": "\u2192"}, "5,5": {"parent": [4, 5], "action": "DOWN", "arrow": "\u2193"}}, "activeArrow": null, "recentSticky": null, "rejectedAttempt": null, "pathSoFar": [[0, 0], [1, 0], [2, 0], [2, 1], [3, 1], [4, 1], [4, 2], [4, 3], [4, 4], [4, 5], [5, 5]], "pathFlipped": true, "walkerCell": null, "highlightedTableRow": null, "level": 0}];
+    const GRID_ROWS = 6;
+    const GRID_COLS = 6;
+    const START_POS = [0, 0];
+    const GOAL_POS = [5, 5];
+
+    const WALL_COORDS = [
+      [0, 5],
+      [1, 1], [1, 2], [1, 3], [1, 5],
+      [2, 2], [2, 3], [2, 5],
+      [3, 2], [3, 3], [3, 4], [3, 5],
+      [4, 0],
+      [5, 0], [5, 1], [5, 2], [5, 3], [5, 4]
+    ];
+
+    const WALL_SET = new Set(WALL_COORDS.map(c => `${c[0]},${c[1]}`));
+
+    // Precalculated BFS Levels for ripple-shading
+    const DIST_MAP = {"0,0": 0, "0,1": 1, "1,0": 1, "0,2": 2, "2,0": 2, "0,3": 3, "2,1": 3, "3,0": 3, "0,4": 4, "3,1": 4, "1,4": 5, "4,1": 5, "2,4": 6, "4,2": 6, "4,3": 7, "4,4": 8, "4,5": 9, "5,5": 10};
+
+    // Application State
+    let currentIndex = 0;
+    let isPlaying = false;
+    let playTimer = null;
+    let playSpeed = 650;
+    let isExploreMode = false;
+    let exploreHopTimer = null;
+    let showingLayerNumbers = false;
+    let lastExploredPath = null;
+
+    // DOM Elements
+    const mazeGrid = document.getElementById('mazeGrid');
+    const arrowsGroup = document.getElementById('arrowsGroup');
+    const hoppingMarker = document.getElementById('hoppingMarker');
+    const walkerAvatar = document.getElementById('walkerAvatar');
+    const narrationBadge = document.getElementById('sceneBadge');
+    const aiConceptBadge = document.getElementById('aiConceptBadge');
+    const narrationText = document.getElementById('narrationText');
+    const narrationSub = document.getElementById('narrationSub');
+    const narrationCard = document.getElementById('narrationCard');
+    const gridStatusPill = document.getElementById('gridStatusPill');
+    const queuePanel = document.getElementById('queuePanel');
+    const queueSizeBadge = document.getElementById('queueSizeBadge');
+    const queueItemsContainer = document.getElementById('queueItemsContainer');
+    const memoryTableBody = document.getElementById('memoryTableBody');
+    const tableCountBadge = document.getElementById('tableCountBadge');
+    const pathStripTitle = document.getElementById('pathStripTitle');
+    const pathLengthPill = document.getElementById('pathLengthPill');
+    const pathChainContainer = document.getElementById('pathChainContainer');
+    const whyItWorksContainer = document.getElementById('whyItWorksContainer');
+    const explorePanel = document.getElementById('explorePanel');
+    const walkExploredBtnContainer = document.getElementById('walkExploredBtnContainer');
+    const stepScrubber = document.getElementById('stepScrubber');
+    const stepCounterText = document.getElementById('stepCounterText');
+    const playBtn = document.getElementById('playBtn');
+    const backBtn = document.getElementById('backBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const skipGoalBtn = document.getElementById('skipGoalBtn');
+    const speedSelect = document.getElementById('speedSelect');
+    const themeToggleBtn = document.getElementById('themeToggleBtn');
+    const themeIcon = document.getElementById('themeIcon');
+    const themeText = document.getElementById('themeText');
+    const sceneNav = document.getElementById('sceneNav');
+
+    // Build Static Maze Cells
+    function initMazeGrid() {
+      const existingCells = mazeGrid.querySelectorAll('.cell');
+      existingCells.forEach(c => c.remove());
+
+      for (let r = 0; r < GRID_ROWS; r++) {
+        for (let c = 0; c < GRID_COLS; c++) {
+          const cellEl = document.createElement('div');
+          cellEl.id = `cell-${r}-${c}`;
+          cellEl.className = 'cell';
+          cellEl.dataset.r = r;
+          cellEl.dataset.c = c;
+
+          const coordKey = `${r},${c}`;
+          if (WALL_SET.has(coordKey)) {
+            cellEl.classList.add('wall');
+          } else if (r === START_POS[0] && c === START_POS[1]) {
+            cellEl.classList.add('start');
+            const badge = document.createElement('span');
+            badge.className = 'cell-badge';
+            badge.innerText = 'S';
+            cellEl.appendChild(badge);
+          } else if (r === GOAL_POS[0] && c === GOAL_POS[1]) {
+            cellEl.classList.add('goal');
+            const badge = document.createElement('span');
+            badge.className = 'cell-badge';
+            badge.innerText = 'G';
+            cellEl.appendChild(badge);
+          }
+
+          const coordLabel = document.createElement('span');
+          coordLabel.className = 'cell-coord';
+          coordLabel.innerText = `${r},${c}`;
+          cellEl.appendChild(coordLabel);
+
+          // Click handler for Explore mode
+          cellEl.addEventListener('click', () => {
+            if (isExploreMode || currentIndex >= 61) {
+              handleExploreClick(r, c);
+            }
+          });
+
+          mazeGrid.appendChild(cellEl);
+        }
+      }
+
+      stepScrubber.max = SNAPSHOTS.length - 1;
+    }
+
+    // Coordinates to SVG pixel center
+    // Cell size: 52px, gap: 6px, padding: 8px
+    function getCellCenter(r, c) {
+      const x = 8 + c * (52 + 6) + 26;
+      const y = 8 + r * (52 + 6) + 26;
+      return { x, y };
+    }
+
+    // Render snapshot by index (Fully deterministic, pure replay)
+    function renderSnapshot(index) {
+      if (index < 0 || index >= SNAPSHOTS.length) return;
+      currentIndex = index;
+      const snap = SNAPSHOTS[currentIndex];
+
+      // Reset any temporary explore hop animation
+      if (exploreHopTimer) {
+        clearInterval(exploreHopTimer);
+        exploreHopTimer = null;
+      }
+
+      // Update scrubber & step text
+      stepScrubber.value = currentIndex;
+      stepCounterText.innerText = `${currentIndex} / ${SNAPSHOTS.length - 1}`;
+
+      // Update Narration
+      narrationBadge.innerText = snap.sceneTitle;
+      aiConceptBadge.innerText = snap.aiConcept;
+      narrationText.innerText = snap.narration;
+      narrationSub.innerText = snap.explanation || '';
+      narrationCard.className = `narration-card scene-${snap.sceneId}`;
+
+      // Update Scene Progress Dots
+      const dotButtons = sceneNav.querySelectorAll('.scene-dot-btn');
+      dotButtons.forEach(btn => {
+        const scNum = parseInt(btn.dataset.scene);
+        btn.classList.remove('active', 'completed');
+        if (scNum === snap.sceneId) {
+          btn.classList.add('active');
+        } else if (scNum < snap.sceneId) {
+          btn.classList.add('completed');
+        }
+      });
+
+      // Show/Hide scene-specific side panels
+      whyItWorksContainer.style.display = (snap.sceneId === 7) ? 'flex' : 'none';
+      explorePanel.style.display = (snap.sceneId === 8) ? 'flex' : 'none';
+      isExploreMode = (snap.sceneId === 8);
+
+      // Progressive disclosure: hide or dim queue in scene 1
+      if (snap.sceneId === 1) {
+        queueItemsContainer.innerHTML = '<span style="font-size: 12px; color: var(--text-dim);">Frontier reveals when search begins in Scene 2</span>';
+        queueSizeBadge.innerText = '0 states';
+      } else {
+        renderQueue(snap.queue);
+      }
+
+      // Update Maze Cells
+      renderMazeCells(snap);
+
+      // Update SVG Parent Arrows
+      renderArrows(snap.parentMap, snap.pathSoFar, snap.activeArrow, snap.rejectedAttempt);
+
+      // Update Memory Table
+      renderMemoryTable(snap.parentMap, snap.highlightedTableRow);
+
+      // Update Path Strip
+      renderPathStrip(snap.pathSoFar, snap.pathFlipped, snap.sceneId);
+
+      // Update Hopping Marker & Walker Avatar
+      renderDynamicMarkers(snap);
+
+      // Button state enable/disable
+      backBtn.disabled = (currentIndex === 0);
+      nextBtn.disabled = (currentIndex === SNAPSHOTS.length - 1);
+    }
+
+    // Render Maze Cell Styles
+    function renderMazeCells(snap) {
+      const exploredSet = new Set((snap.explored || []).map(c => `${c[0]},${c[1]}`));
+      const queueSet = new Set((snap.queue || []).map(c => `${c[0]},${c[1]}`));
+      const pathSet = new Set((snap.pathSoFar || []).map(c => `${c[0]},${c[1]}`));
+      const currentCellKey = snap.currentCell ? `${snap.currentCell[0]},${snap.currentCell[1]}` : null;
+
+      for (let r = 0; r < GRID_ROWS; r++) {
+        for (let c = 0; c < GRID_COLS; c++) {
+          const key = `${r},${c}`;
+          const cellEl = document.getElementById(`cell-${r}-${c}`);
+          if (!cellEl || WALL_SET.has(key)) continue;
+
+          // Remove dynamic state classes
+          cellEl.classList.remove('explored', 'in-queue', 'current', 'in-path', 'pulse-goal', 'clickable');
+          cellEl.style.backgroundColor = '';
+
+          // Remove old sticky note if any
+          const oldSticky = cellEl.querySelector('.sticky-note');
+          if (oldSticky) oldSticky.remove();
+
+          // Remove layer badge if not in layer mode
+          const oldLayerBadge = cellEl.querySelector('.layer-number-badge');
+          if (oldLayerBadge && !showingLayerNumbers) oldLayerBadge.remove();
+
+          // Ripple-shading for explored cells based on BFS distance
+          if (exploredSet.has(key)) {
+            cellEl.classList.add('explored');
+            const level = DIST_MAP[key] || 0;
+            const isDark = document.body.dataset.theme === 'dark';
+            const baseAlpha = isDark ? 0.12 + level * 0.025 : 0.08 + level * 0.02;
+            cellEl.style.backgroundColor = `rgba(59, 130, 246, ${baseAlpha})`;
+
+            if (showingLayerNumbers && !cellEl.querySelector('.layer-number-badge')) {
+              const lBadge = document.createElement('span');
+              lBadge.className = 'layer-number-badge';
+              lBadge.innerText = `L${level}`;
+              cellEl.appendChild(lBadge);
+            }
+          }
+
+          if (queueSet.has(key)) {
+            cellEl.classList.add('in-queue');
+          }
+
+          if (currentCellKey === key) {
+            cellEl.classList.add('current');
+          }
+
+          // Cells in trace-back path
+          if (pathSet.has(key)) {
+            cellEl.classList.add('in-path');
+          }
+
+          // Goal pulse when Goal found
+          if (r === GOAL_POS[0] && c === GOAL_POS[1] && (snap.sceneId === 4 || currentCellKey === key)) {
+            cellEl.classList.add('pulse-goal');
+          }
+
+          // Sticky notes on recent discovery
+          if (snap.recentSticky && snap.recentSticky.cell[0] === r && snap.recentSticky.cell[1] === c) {
+            const stickyEl = document.createElement('div');
+            stickyEl.className = 'sticky-note';
+            stickyEl.innerText = `came from (${snap.recentSticky.from[0]},${snap.recentSticky.from[1]})`;
+            cellEl.appendChild(stickyEl);
+          }
+
+          // Make clickable in Explore Mode
+          if (isExploreMode && exploredSet.has(key)) {
+            cellEl.classList.add('clickable');
+          }
+        }
+      }
+
+      // Update status pill text
+      if (snap.currentCell) {
+        gridStatusPill.innerText = `Current: (${snap.currentCell[0]},${snap.currentCell[1]}) • Level ${snap.level || 0}`;
+      } else if (snap.sceneId === 8) {
+        gridStatusPill.innerText = `Explore Mode: Click any cell`;
+      } else {
+        gridStatusPill.innerText = `BFS Search Space`;
+      }
+    }
+
+    // Render SVG Parent Arrows with animation
+    function renderArrows(parentMap, pathSoFar, activeArrow, rejectedAttempt) {
+      arrowsGroup.innerHTML = '';
+      if (!parentMap) return;
+
+      const pathPairs = new Set();
+      if (pathSoFar && pathSoFar.length > 1) {
+        for (let i = 0; i < pathSoFar.length - 1; i++) {
+          const a = pathSoFar[i];
+          const b = pathSoFar[i+1];
+          pathPairs.add(`${a[0]},${a[1]}->${b[0]},${b[1]}`);
+          pathPairs.add(`${b[0]},${b[1]}->${a[0]},${a[1]}`);
+        }
+      }
+
+      for (const [childKey, info] of Object.entries(parentMap)) {
+        const [cr, cc] = childKey.split(',').map(Number);
+        const [pr, pc] = info.parent;
+
+        const pCenter = getCellCenter(pr, pc);
+        const cCenter = getCellCenter(cr, cc);
+
+        const dx = cCenter.x - pCenter.x;
+        const dy = cCenter.y - pCenter.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist === 0) continue;
+
+        const ux = dx / dist;
+        const uy = dy / dist;
+
+        const sx = pCenter.x + ux * 15;
+        const sy = pCenter.y + uy * 15;
+        const ex = cCenter.x - ux * 16;
+        const ey = cCenter.y - uy * 16;
+
+        const isPathEdge = pathPairs.has(`${childKey}->${pr},${pc}`) || pathPairs.has(`${pr},${pc}->${childKey}`);
+        const isActiveNew = activeArrow && activeArrow.to[0] === cr && activeArrow.to[1] === cc;
+
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        line.setAttribute('x1', sx);
+        line.setAttribute('y1', sy);
+        line.setAttribute('x2', ex);
+        line.setAttribute('y2', ey);
+        
+        let arrowClass = 'parent-arrow';
+        if (isPathEdge) arrowClass += ' highlight-path';
+        if (isActiveNew) arrowClass += ' anim-draw';
+        line.setAttribute('class', arrowClass);
+        line.setAttribute('marker-end', isPathEdge ? 'url(#arrow-green)' : 'url(#arrow)');
+
+        arrowsGroup.appendChild(line);
+      }
+
+      // Render rejected attempt arrow if present
+      if (rejectedAttempt) {
+        const pCenter = getCellCenter(rejectedAttempt.from[0], rejectedAttempt.from[1]);
+        const cCenter = getCellCenter(rejectedAttempt.to[0], rejectedAttempt.to[1]);
+        const dx = cCenter.x - pCenter.x;
+        const dy = cCenter.y - pCenter.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist > 0) {
+          const ux = dx / dist;
+          const uy = dy / dist;
+          const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+          line.setAttribute('x1', pCenter.x + ux * 15);
+          line.setAttribute('y1', pCenter.y + uy * 15);
+          line.setAttribute('x2', cCenter.x - ux * 16);
+          line.setAttribute('y2', cCenter.y - uy * 16);
+          line.setAttribute('class', 'parent-arrow rejected-arrow');
+          line.setAttribute('marker-end', 'url(#arrow-red)');
+          arrowsGroup.appendChild(line);
+        }
+      }
+    }
+
+    // Render Frontier Queue
+    function renderQueue(queue) {
+      queueItemsContainer.innerHTML = '';
+      if (!queue || queue.length === 0) {
+        queueItemsContainer.innerHTML = '<span style="font-size: 12px; color: var(--text-dim);">Queue is empty</span>';
+        queueSizeBadge.innerText = '0 states';
+        return;
+      }
+
+      queueSizeBadge.innerText = `${queue.length} state${queue.length > 1 ? 's' : ''}`;
+
+      queue.forEach((item, idx) => {
+        const chip = document.createElement('div');
+        chip.className = `queue-item ${idx === 0 ? 'front' : 'in-queue-badge'}`;
+        chip.innerHTML = idx === 0 
+          ? `<strong>Front:</strong> (${item[0]},${item[1]})` 
+          : `(${item[0]},${item[1]})`;
+        queueItemsContainer.appendChild(chip);
+      });
+    }
+
+    // Render Memory Table
+    function renderMemoryTable(parentMap, highlightedRow) {
+      memoryTableBody.innerHTML = '';
+      if (!parentMap || Object.keys(parentMap).length === 0) {
+        const emptyRow = document.createElement('tr');
+        emptyRow.innerHTML = '<td colspan="3" style="text-align:center; color: var(--text-dim); padding: 10px; font-size: 12px;">Memory table is currently empty</td>';
+        memoryTableBody.appendChild(emptyRow);
+        tableCountBadge.innerText = '0 records';
+        return;
+      }
+
+      const entries = Object.entries(parentMap);
+      tableCountBadge.innerText = `${entries.length} records`;
+
+      let targetRowEl = null;
+
+      entries.forEach(([childKey, info]) => {
+        const row = document.createElement('tr');
+        row.id = `row-${childKey}`;
+
+        const isHighlighted = (highlightedRow === childKey);
+        if (isHighlighted) {
+          row.classList.add('highlight-path');
+          targetRowEl = row;
+        }
+
+        row.innerHTML = `
+          <td>(${childKey})</td>
+          <td>${info.action} ${info.arrow}</td>
+          <td>(${info.parent[0]},${info.parent[1]})</td>
+        `;
+
+        memoryTableBody.appendChild(row);
+      });
+
+      if (targetRowEl) {
+        targetRowEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    }
+
+    // Render Path Strip
+    function renderPathStrip(pathSoFar, isFlipped, sceneId) {
+      pathChainContainer.innerHTML = '';
+
+      if (!pathSoFar || pathSoFar.length === 0) {
+        pathStripTitle.innerText = 'Recovered Route: None';
+        pathLengthPill.style.display = 'none';
+        pathChainContainer.innerHTML = '<span style="font-size: 12px; color: var(--text-dim);">Path builds during Scene 5 (Trace Back)</span>';
+        return;
+      }
+
+      const movesCount = pathSoFar.length - 1;
+      pathLengthPill.style.display = 'inline-block';
+      pathLengthPill.innerText = `Path length: ${movesCount} move${movesCount === 1 ? '' : 's'}`;
+
+      if (isFlipped) {
+        pathStripTitle.innerText = 'Forward Action Plan (S to G):';
+      } else {
+        pathStripTitle.innerText = 'Backward Route Recovery (G to S):';
+      }
+
+      pathSoFar.forEach((cell, idx) => {
+        const node = document.createElement('span');
+        node.className = 'path-node highlight';
+        if (sceneId === 6 && idx === 0) node.classList.add('anim-flip');
+        
+        let label = `(${cell[0]},${cell[1]})`;
+        if (cell[0] === START_POS[0] && cell[1] === START_POS[1]) label = `S (${cell[0]},${cell[1]})`;
+        if (cell[0] === GOAL_POS[0] && cell[1] === GOAL_POS[1]) label = `G (${cell[0]},${cell[1]})`;
+        
+        node.innerText = label;
+        pathChainContainer.appendChild(node);
+
+        if (idx < pathSoFar.length - 1) {
+          const sep = document.createElement('span');
+          sep.className = 'path-sep';
+          sep.innerText = isFlipped ? '→' : '←';
+          pathChainContainer.appendChild(sep);
+        }
+      });
+    }
+
+    // Render Hopping Marker & Walker Avatar
+    function renderDynamicMarkers(snap) {
+      // Scene 5: Glowing Hopping Marker
+      if (snap.sceneId === 5 && snap.currentCell) {
+        const center = getCellCenter(snap.currentCell[0], snap.currentCell[1]);
+        hoppingMarker.style.display = 'block';
+        hoppingMarker.style.left = `${center.x}px`;
+        hoppingMarker.style.top = `${center.y}px`;
+      } else if (!exploreHopTimer) {
+        hoppingMarker.style.display = 'none';
+      }
+
+      // Scene 6: Animated Walker
+      if (snap.sceneId === 6 && snap.walkerCell) {
+        const center = getCellCenter(snap.walkerCell[0], snap.walkerCell[1]);
+        walkerAvatar.style.display = 'flex';
+        walkerAvatar.style.left = `${center.x}px`;
+        walkerAvatar.style.top = `${center.y}px`;
+      } else {
+        walkerAvatar.style.display = 'none';
+      }
+    }
+
+    // Scene 7 Helper: Highlight Rule 1 Conflict on Cell (3,1)
+    function highlightRule1Conflict() {
+      pausePlayback();
+      const snap = SNAPSHOTS[currentIndex];
+      // Draw rejected red arrow from (3,0) to (3,1)
+      renderArrows(snap.parentMap, snap.pathSoFar, null, { from: [3, 0], to: [3, 1] });
+      narrationText.innerText = "Notice Cell (3,1): Discovered first from (2,1). Later, (3,0) tried to reach it, but the red dashed attempt was rejected!";
+      narrationSub.innerText = "Because a parent is set once and never overwritten, cycles and loops are impossible, and every cell has exactly one parent.";
+      
+      const c31 = document.getElementById('cell-3-1');
+      if (c31) {
+        c31.classList.add('current');
+        setTimeout(() => c31.classList.remove('current'), 2500);
+      }
+    }
+
+    // Scene 7 Helper: Toggle Layer Numbers
+    function toggleRippleLayerNumbers() {
+      showingLayerNumbers = !showingLayerNumbers;
+      renderMazeCells(SNAPSHOTS[currentIndex]);
+      if (showingLayerNumbers) {
+        narrationText.innerText = "Concentric Layers 0 to 10: BFS expands uniformly outward like ripples in water.";
+        narrationSub.innerText = "Start is L0, immediate neighbors are L1, and Goal G is discovered at Layer 10. No path shorter than 10 moves exists!";
+      } else {
+        narrationText.innerText = SNAPSHOTS[currentIndex].narration;
+        narrationSub.innerText = SNAPSHOTS[currentIndex].explanation;
+      }
+    }
+
+    // Explore Mode Click Handler (Interactive Scene 8)
+    function handleExploreClick(r, c) {
+      const snap = SNAPSHOTS[currentIndex];
+      const parentMap = snap.parentMap;
+      const key = `${r},${c}`;
+
+      if (WALL_SET.has(key)) {
+        narrationText.innerText = `Cell (${r},${c}) is a Wall! Impassable state.`;
+        return;
+      }
+
+      if (r === START_POS[0] && c === START_POS[1]) {
+        narrationText.innerText = `Cell (${r},${c}) is Start S! Path length: 0 moves.`;
+        renderPathStrip([[0,0]], true, 8);
+        return;
+      }
+
+      if (!parentMap[key]) {
+        narrationText.innerText = `Cell (${r},${c}) was not explored.`;
+        return;
+      }
+
+      pausePlayback();
+
+      // Trace back from (r,c) to Start
+      const trace = [];
+      let curr = [r, c];
+      while (curr) {
+        trace.push(curr);
+        const pInfo = parentMap[`${curr[0]},${curr[1]}`];
+        curr = pInfo ? pInfo.parent : null;
+      }
+
+      lastExploredPath = [...trace].reverse();
+      walkExploredBtnContainer.style.display = 'block';
+
+      narrationBadge.innerText = "8. Explore Mode";
+      aiConceptBadge.innerText = "Interactive Trace-Back";
+      narrationText.innerText = `Tracing back from (${r},${c}) to Start (0,0): ${trace.length - 1} moves!`;
+      narrationSub.innerText = "Watch the glowing marker hop along the stored parent pointers row by row.";
+
+      let hopIndex = 0;
+      if (exploreHopTimer) clearInterval(exploreHopTimer);
+
+      hoppingMarker.style.display = 'block';
+      const firstCenter = getCellCenter(trace[0][0], trace[0][1]);
+      hoppingMarker.style.left = `${firstCenter.x}px`;
+      hoppingMarker.style.top = `${firstCenter.y}px`;
+
+      exploreHopTimer = setInterval(() => {
+        if (hopIndex >= trace.length) {
+          clearInterval(exploreHopTimer);
+          exploreHopTimer = null;
+          renderPathStrip(lastExploredPath, true, 8);
+          narrationText.innerText = `Route from (${r},${c}) to Start (0,0) verified in ${trace.length - 1} legal moves! Click 'Walk' below to watch the robot navigate it.`;
+          return;
+        }
+
+        const currentHop = trace[hopIndex];
+        const center = getCellCenter(currentHop[0], currentHop[1]);
+        hoppingMarker.style.left = `${center.x}px`;
+        hoppingMarker.style.top = `${center.y}px`;
+
+        renderMemoryTable(parentMap, `${currentHop[0]},${currentHop[1]}`);
+        renderPathStrip(trace.slice(0, hopIndex + 1), false, 8);
+
+        hopIndex++;
+      }, 400);
+    }
+
+    // Walk the currently recovered path in Explore Mode
+    function walkCurrentExploredPath() {
+      if (!lastExploredPath || lastExploredPath.length < 2) return;
+      if (exploreHopTimer) clearInterval(exploreHopTimer);
+      hoppingMarker.style.display = 'none';
+
+      walkerAvatar.style.display = 'flex';
+      let step = 0;
+      const startC = getCellCenter(lastExploredPath[0][0], lastExploredPath[0][1]);
+      walkerAvatar.style.left = `${startC.x}px`;
+      walkerAvatar.style.top = `${startC.y}px`;
+
+      const walkInterval = setInterval(() => {
+        step++;
+        if (step >= lastExploredPath.length) {
+          clearInterval(walkInterval);
+          narrationText.innerText = `Walker reached destination (${lastExploredPath[lastExploredPath.length-1][0]},${lastExploredPath[lastExploredPath.length-1][1]}) flawlessly!`;
+          return;
+        }
+        const cell = lastExploredPath[step];
+        const c = getCellCenter(cell[0], cell[1]);
+        walkerAvatar.style.left = `${c.x}px`;
+        walkerAvatar.style.top = `${c.y}px`;
+        narrationText.innerText = `Walker moving step ${step} of ${lastExploredPath.length-1}: (${cell[0]},${cell[1]})`;
+      }, 350);
+    }
+
+    // Playback Controller
+    function startPlayback() {
+      if (currentIndex >= SNAPSHOTS.length - 1) {
+        currentIndex = 0;
+      }
+      isPlaying = true;
+      playBtn.innerHTML = '⏸ Pause';
+      playBtn.classList.remove('btn-primary');
+
+      playTimer = setInterval(() => {
+        if (currentIndex < SNAPSHOTS.length - 1) {
+          renderSnapshot(currentIndex + 1);
+          if (SNAPSHOTS[currentIndex].sceneId === 8) {
+            pausePlayback();
+          }
+        } else {
+          pausePlayback();
+        }
+      }, playSpeed);
+    }
+
+    function pausePlayback() {
+      isPlaying = false;
+      playBtn.innerHTML = '▶ Auto-Play';
+      playBtn.classList.add('btn-primary');
+      if (playTimer) {
+        clearInterval(playTimer);
+        playTimer = null;
+      }
+    }
+
+    function togglePlayback() {
+      if (isPlaying) {
+        pausePlayback();
+      } else {
+        startPlayback();
+      }
+    }
+
+    // Jump to specific Scene
+    function jumpToScene(sceneNumber) {
+      pausePlayback();
+      const targetIdx = SNAPSHOTS.findIndex(s => s.sceneId === sceneNumber);
+      if (targetIdx !== -1) {
+        renderSnapshot(targetIdx);
+      }
+    }
+
+    // Event Listeners
+    playBtn.addEventListener('click', togglePlayback);
+
+    nextBtn.addEventListener('click', () => {
+      pausePlayback();
+      if (currentIndex < SNAPSHOTS.length - 1) {
+        renderSnapshot(currentIndex + 1);
+      }
+    });
+
+    backBtn.addEventListener('click', () => {
+      pausePlayback();
+      if (currentIndex > 0) {
+        renderSnapshot(currentIndex - 1);
+      }
+    });
+
+    resetBtn.addEventListener('click', () => {
+      pausePlayback();
+      renderSnapshot(0);
+    });
+
+    skipGoalBtn.addEventListener('click', () => {
+      pausePlayback();
+      const goalIdx = SNAPSHOTS.findIndex(s => s.sceneId === 4);
+      if (goalIdx !== -1) {
+        renderSnapshot(goalIdx);
+      }
+    });
+
+    stepScrubber.addEventListener('input', (e) => {
+      pausePlayback();
+      renderSnapshot(parseInt(e.target.value));
+    });
+
+    speedSelect.addEventListener('change', (e) => {
+      playSpeed = parseInt(e.target.value);
+      if (isPlaying) {
+        pausePlayback();
+        startPlayback();
+      }
+    });
+
+    // Scene Nav Dots click
+    sceneNav.addEventListener('click', (e) => {
+      const btn = e.target.closest('.scene-dot-btn');
+      if (!btn) return;
+      const scNum = parseInt(btn.dataset.scene);
+      jumpToScene(scNum);
+    });
+
+    // Light / Dark Theme Toggle
+    themeToggleBtn.addEventListener('click', () => {
+      const currentTheme = document.body.dataset.theme;
+      const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+      document.body.dataset.theme = newTheme;
+      themeIcon.innerText = newTheme === 'dark' ? '☀️' : '🌙';
+      themeText.innerText = newTheme === 'dark' ? 'Light' : 'Dark';
+      renderSnapshot(currentIndex);
+    });
+
+    // Keyboard Shortcuts
+    window.addEventListener('keydown', (e) => {
+      if (e.code === 'Space') {
+        e.preventDefault();
+        togglePlayback();
+      } else if (e.code === 'ArrowRight') {
+        e.preventDefault();
+        pausePlayback();
+        if (currentIndex < SNAPSHOTS.length - 1) renderSnapshot(currentIndex + 1);
+      } else if (e.code === 'ArrowLeft') {
+        e.preventDefault();
+        pausePlayback();
+        if (currentIndex > 0) renderSnapshot(currentIndex - 1);
+      } else if (e.key === 'r' || e.key === 'R') {
+        pausePlayback();
+        renderSnapshot(0);
+      }
+    });
+
+    // Initialize
+    initMazeGrid();
+    renderSnapshot(0);
+  </script>
+</body>
+</html>
