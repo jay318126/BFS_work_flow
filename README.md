@@ -2,46 +2,54 @@
 
 An interactive, self-contained educational tool that visualizes path recovery in Breadth-First Search (BFS) using AI search concepts (States, Actions, Frontier, Backpointers).
 
-## Live Demo
-When deployed to GitHub Pages, the project is live at:
-`https://<username>.github.io/<repo-name>/`
-
 ---
 
-## Deploy to GitHub Pages (For your friend's GitHub)
+## 🚀 How to Run Locally
 
-1. Create a new repository on your friend's GitHub account (e.g., `bfs-path-recovery`).
-2. Run the following commands in this folder:
-   ```bash
-   git init
-   git add .
-   git commit -m "Initial commit: BFS Path Recovery visual story"
-   git branch -M main
-   git remote add origin https://github.com/<friend-username>/<repo-name>.git
-   git push -u origin main
-   ```
-3. In the repository settings on GitHub:
-   - Go to **Settings** → **Pages**.
-   - Under **Build and deployment**, set **Source** to **GitHub Actions** (the included `.github/workflows/deploy.yml` workflow will automatically deploy it), OR choose **Deploy from a branch** (`main` / `root`).
-4. Your site will be live in ~30 seconds!
+Since this is a fully self-contained web app with no build step required:
 
----
+### Option 1: Double-click to open
+Simply double-click [`index.html`](file:///c:/Users/HP/Downloads/AI_lab_project/index.html) or open it directly in Google Chrome, Microsoft Edge, Brave, or Firefox.
 
-## Instant Zero-Setup Alternative (Netlify Drop)
-If you need an instant public link right now without pushing anywhere:
-1. Open [Netlify Drop](https://app.netlify.com/drop).
-2. Drag and drop this folder (or `index.html`).
-3. You get an instant live public URL in 10 seconds!
-
----
-
-## Local Preview
-Simply open `index.html` in any modern web browser, or run:
+### Option 2: Using a local web server
 ```bash
-# Python
-python -m http.server 8000
+# If you have Node.js:
+node server.js
+# Then open http://localhost:3000
 
-# or Node
-npx serve
+# Or using Python:
+python -m http.server 8000
+# Then open http://localhost:8000
 ```
 
+---
+
+## 🌐 Deploy to Render (Step-by-Step)
+
+### Recommended Method: Deploy as a "Static Site" (Fastest, 100% Free, No Sleep)
+1. Go to your [Render Dashboard](https://dashboard.render.com/).
+2. Click **New +** at the top right and select **Static Site**.
+3. Connect your GitHub repository (`BFS_work_flow`).
+4. Set the following fields:
+   - **Name**: `bfs-work-flow` (or any name you choose)
+   - **Branch**: `main`
+   - **Root Directory**: *(leave blank)*
+   - **Build Command**: *(leave blank)*
+   - **Publish Directory**: `.`
+5. Click **Create Static Site**.
+6. Render will finish in ~10 seconds and give you a public URL (e.g., `https://bfs-work-flow.onrender.com`).
+
+### Alternative Method: Deploy as a "Web Service"
+If you already selected **Web Service** on Render:
+- **Build Command**: *(leave blank or `npm install`)*
+- **Start Command**: `node server.js`
+Render will detect `package.json` and start the server automatically.
+
+---
+
+## ⚡ Instant Alternative: GitHub Pages (Already Pre-configured)
+Since `.github/workflows/deploy.yml` is already in this repo:
+1. Go to your repo on GitHub: `https://github.com/jay318126/BFS_work_flow`
+2. Click **Settings** → **Pages** (on the left menu).
+3. Under **Build and deployment**, set **Source** to **GitHub Actions**.
+4. The deployment runs automatically and provides a live link: `https://jay318126.github.io/BFS_work_flow/`.

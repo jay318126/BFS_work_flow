@@ -1,0 +1,6 @@
+services:
+  - type: web
+    name: bfs-work-flow
+    runtime: static
+    buildCommand: ""
+    staticPublishPath: .
